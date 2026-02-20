@@ -5,7 +5,7 @@ Uses LLM to extract structured information from user messages.
 import json
 import re
 from typing import Dict, Any, Optional, Tuple
-from langchain_openai import ChatOpenAI
+from langchain_community.chat_models import ChatOllama
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import JsonOutputParser
 
@@ -60,11 +60,11 @@ Responda APENAS em formato JSON válido:
 }}"""
 
     def __init__(self):
-        """Initialize the parser with LLM."""
-        self.llm = ChatOpenAI(
-            model="gpt-3.5-turbo",
+        """Initialize the parser with LLM (Ollama / Qwen3)."""
+        self.llm = ChatOllama(
+            model=settings.ollama_model,
             temperature=0,
-            api_key=settings.openai_api_key
+            base_url=settings.ollama_base_url,
         )
         
         self.prompt = ChatPromptTemplate.from_messages([

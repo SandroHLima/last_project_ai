@@ -11,9 +11,8 @@ cryptography==41.0.7
 
 # LangGraph and LangChain
 langgraph==0.0.55
-langchain==0.1.6
-langchain-openai==0.0.5
-langchain-core==0.1.17
+langchain>=0.2,<0.3
+langchain-community>=0.2,<0.3
 
 # Utilities
 python-dotenv==1.0.0

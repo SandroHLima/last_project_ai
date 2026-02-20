@@ -4,6 +4,8 @@ School Grades Agent API
 Main FastAPI application for the school grades management system.
 Provides both natural language agent interface and direct tool access.
 """
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -13,7 +15,21 @@ from database import init_db
 from api import agent_router, tools_router, users_router
 
 
-# Create FastAPI app
+# --------------- Lifespan ---------------
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Lifespan handler – initialise DB on startup."""
+    if settings.debug:
+        print("Initializing database...")
+    init_db()
+    if settings.debug:
+        print("Database initialized.")
+    yield
+
+
+# --------------- FastAPI app ---------------
+
 app = FastAPI(
     title="School Grades Agent API",
     description="""
@@ -39,6 +55,7 @@ API for managing school grades with an AI agent interface.
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
+    lifespan=lifespan,
 )
 
 # Add CORS middleware
@@ -83,21 +100,12 @@ async def health_check():
     return {"status": "healthy"}
 
 
-@app.on_event("startup")
-async def startup_event():
-    """Initialize database on startup."""
-    if settings.debug:
-        print("Initializing database...")
-        init_db()
-        print("Database initialized.")
-
-
 if __name__ == "__main__":
     import uvicorn
-    
+
     uvicorn.run(
         "main:app",
         host=settings.api_host,
         port=settings.api_port,
-        reload=settings.debug
+        reload=settings.debug,
     )
