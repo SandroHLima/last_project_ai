@@ -8,6 +8,9 @@ from database import get_db
 from tools import (
     get_user,
     get_user_with_classes,
+    create_user,
+    list_users,
+    list_turmas,
     add_grade,
     update_grade,
     get_grades_by_student,
@@ -28,7 +31,9 @@ from .schemas import (
     UpdateGradeRequest,
     GradesQueryRequest,
     ClassReportRequest,
+    CreateUserRequest,
     UserResponse,
+    TurmaResponse,
     GradesListResponse,
     SummaryResponse,
     ClassReportResponse,
@@ -69,6 +74,39 @@ async def agent_chat(request: AgentRequest, db: Session = Depends(get_db)):
         return AgentResponse(**result)
     except InvalidUserError:
         raise HTTPException(status_code=404, detail="User not found")
+
+
+@users_router.post("/", response_model=UserResponse)
+async def create_user_endpoint(request: CreateUserRequest, db: Session = Depends(get_db)):
+    """Create a new user (student or teacher)."""
+    try:
+        user = create_user(db=db, name=request.name, role=request.role, turma_ids=request.turma_ids)
+        return UserResponse(**user)
+    except ValidationError as e:
+        raise HTTPException(status_code=400, detail=e.message)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@users_router.get("/", response_model=list[UserResponse])
+async def get_users_endpoint(role: str | None = None, db: Session = Depends(get_db)):
+    """List users. Optional query param `role` filters by 'student' or 'teacher'."""
+    try:
+        users = list_users(db=db, role=role)
+        return [UserResponse(**u) for u in users]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+
+@tools_router.get("/turmas", response_model=list[TurmaResponse])
+async def get_turmas_endpoint(db: Session = Depends(get_db)):
+    """Return list of turmas (classes)."""
+    try:
+        turmas = list_turmas(db=db)
+        return [TurmaResponse(**t) for t in turmas]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

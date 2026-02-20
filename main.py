@@ -9,6 +9,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from config import settings
 from database import init_db
@@ -57,6 +58,9 @@ API for managing school grades with an AI agent interface.
     redoc_url="/redoc",
     lifespan=lifespan,
 )
+
+# Serve simple static admin page for user management
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Add CORS middleware
 app.add_middleware(

@@ -135,3 +135,67 @@ def find_student_by_name(
             "role": student.role
         }
     return None
+
+
+def list_users(db: Session, role: Optional[str] = None) -> list[Dict[str, Any]]:
+    """
+    List users, optionally filtered by role ('student' or 'teacher').
+
+    Args:
+        db: Database session
+        role: Optional role filter
+
+    Returns:
+        List of user dicts
+    """
+    query = db.query(User)
+    if role:
+        query = query.filter(User.role == role)
+    users = query.all()
+    return [{"id": u.id, "name": u.name, "role": u.role} for u in users]
+
+
+def list_turmas(db: Session) -> list[Dict[str, Any]]:
+    """
+    Return list of all `Turma` records.
+    """
+    turmas = db.query(Turma).all()
+    return [{"id": t.id, "name": t.name} for t in turmas]
+
+
+def create_user(db: Session, name: str, role: str, turma_ids: Optional[list[int]] = None) -> Dict[str, Any]:
+    """
+    Create a new user (student or teacher) and optionally assign to classes.
+
+    Args:
+        db: Database session
+        name: User full name
+        role: 'student' or 'teacher'
+        turma_ids: Optional list of turma IDs to assign (students only)
+
+    Returns:
+        Dict with created user info
+
+    Raises:
+        ValidationError: if role invalid or turma doesn't exist
+    """
+    from .exceptions import ValidationError
+    # Basic validation
+    if role not in ("student", "teacher"):
+        raise ValidationError("Invalid role. Must be 'student' or 'teacher'", field="role")
+
+    user = User(name=name, role=role)
+    db.add(user)
+    db.flush()
+
+    # If student and turma_ids provided, create associations
+    if role == "student" and turma_ids:
+        for t_id in turma_ids:
+            turma = db.query(Turma).filter(Turma.id == t_id).first()
+            if not turma:
+                raise ValidationError(f"Turma id {t_id} not found", field="turma_id")
+            assoc = AlunoTurma(user_id=user.id, turma_id=t_id)
+            db.add(assoc)
+
+    db.commit()
+    return {"id": user.id, "name": user.name, "role": user.role}

@@ -51,6 +51,13 @@ class ClassReportRequest(BaseModel):
     modulo: Optional[str] = Field(None, description="Filter by module")
 
 
+class CreateUserRequest(BaseModel):
+    """Request to create a user (student or teacher)."""
+    name: str = Field(..., description="Full name of the user", min_length=1)
+    role: str = Field(..., description="Role: 'student' or 'teacher'")
+    turma_ids: Optional[List[int]] = Field(None, description="Optional list of turma IDs to assign (students only)")
+
+
 # Response schemas
 class AgentResponse(BaseModel):
     """Response from the agent."""
@@ -66,6 +73,12 @@ class UserResponse(BaseModel):
     id: int
     name: str
     role: str
+
+
+class TurmaResponse(BaseModel):
+    """Turma (class) response."""
+    id: int
+    name: str
 
 
 class GradeResponse(BaseModel):

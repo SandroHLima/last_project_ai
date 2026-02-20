@@ -23,6 +23,9 @@ from .identity import (
     get_user_with_classes,
     get_students_in_class,
     find_student_by_name,
+    list_users,
+    list_turmas,
+    create_user,
 )
 
 from .grades_write import (
@@ -62,6 +65,9 @@ __all__ = [
     "get_user_with_classes",
     "get_students_in_class",
     "find_student_by_name",
+    "list_users",
+    "create_user",
+    "list_turmas",
     # Grades Write
     "add_grade",
     "update_grade",

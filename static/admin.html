@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Admin - Create User</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width:720px; margin:24px auto; }
+    label { display:block; margin-top:12px; }
+    select[multiple] { height:120px; }
+    .msg { margin-top:12px; }
+  </style>
+</head>
+<body>
+  <h1>Admin — Create User</h1>
+  <form id="userForm">
+    <label>Name
+      <input type="text" id="name" required />
+    </label>
+    <label>Role
+      <select id="role">
+        <option value="student">student</option>
+        <option value="teacher">teacher</option>
+      </select>
+    </label>
+    <label>Turmas (select for students)
+      <select id="turmas" multiple></select>
+    </label>
+    <button type="submit">Create User</button>
+  </form>
+
+  <div class="msg" id="msg"></div>
+
+  <script>
+    async function loadTurmas() {
+      try {
+        const res = await fetch('/tools/turmas');
+        if (!res.ok) throw new Error('Failed to load turmas');
+        const data = await res.json();
+        const sel = document.getElementById('turmas');
+        sel.innerHTML = '';
+        data.forEach(t => {
+          const opt = document.createElement('option');
+          opt.value = t.id;
+          opt.textContent = t.name;
+          sel.appendChild(opt);
+        });
+      } catch (err) {
+        document.getElementById('msg').textContent = err.message;
+      }
+    }
+
+    document.getElementById('role').addEventListener('change', (e) => {
+      const sel = document.getElementById('turmas');
+      sel.disabled = e.target.value !== 'student';
+    });
+
+    document.getElementById('userForm').addEventListener('submit', async (ev) => {
+      ev.preventDefault();
+      const name = document.getElementById('name').value.trim();
+      const role = document.getElementById('role').value;
+      const turmaSel = document.getElementById('turmas');
+      const turma_ids = Array.from(turmaSel.selectedOptions).map(o => Number(o.value));
+      const payload = { name, role };
+      if (role === 'student') payload.turma_ids = turma_ids;
+
+      try {
+        const res = await fetch('/users/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const body = await res.json();
+        if (!res.ok) throw new Error(body.detail || body.message || JSON.stringify(body));
+        document.getElementById('msg').textContent = 'User created: ' + JSON.stringify(body);
+        document.getElementById('userForm').reset();
+        loadTurmas();
+      } catch (err) {
+        document.getElementById('msg').textContent = 'Error: ' + err.message;
+      }
+    });
+
+    loadTurmas();
+  </script>
+</body>
+</html>
