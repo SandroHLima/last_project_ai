@@ -24,9 +24,6 @@ def _ensure_database_exists():
     tmp_engine.dispose()
 
 
-# Ensure the target database exists before creating the main engine
-_ensure_database_exists()
-
 # Create engine
 engine = create_engine(
     settings.database_url,
@@ -40,7 +37,8 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
 def init_db():
-    """Initialize database by creating all tables."""
+    """Initialize database by creating database and tables."""
+    _ensure_database_exists()
     Base.metadata.create_all(bind=engine)
 
 

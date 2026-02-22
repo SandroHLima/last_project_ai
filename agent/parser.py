@@ -5,7 +5,10 @@ Uses LLM to extract structured information from user messages.
 import json
 import re
 from typing import Dict, Any, Optional, Tuple
-from langchain_community.chat_models import ChatOllama
+try:
+    from langchain_community.chat_models import ChatOllama
+except Exception:
+    ChatOllama = None
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import JsonOutputParser
 

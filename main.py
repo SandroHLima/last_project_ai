@@ -104,7 +104,7 @@ async def health_check():
     return {"status": "healthy"}
 
 
-if __name__ == "__main__":
+""" if __name__ == "__main__":
     import uvicorn
 
     uvicorn.run(
@@ -113,3 +113,4 @@ if __name__ == "__main__":
         port=settings.api_port,
         reload=settings.debug,
     )
+ """
