@@ -28,13 +28,10 @@ from .identity import (
     create_user,
 )
 
-from .grades_write import (
+from .grades import (
     add_grade,
     update_grade,
     delete_grade,  # Always raises FeatureNotAvailableError
-)
-
-from .grades_read import (
     get_grades_by_student,
     get_grades_by_disciplina,
     get_grade_summary,

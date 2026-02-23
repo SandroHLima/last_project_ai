@@ -107,8 +107,6 @@ async def get_turmas_endpoint(db: Session = Depends(get_db)):
         return [TurmaResponse(**t) for t in turmas]
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
 
 # ============== User Endpoints ==============

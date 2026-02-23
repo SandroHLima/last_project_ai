@@ -173,6 +173,18 @@ def resolve_names_to_ids(state: AgentState, db: Session) -> Dict[str, Any]:
             )
             if student:
                 entities["student_id"] = student["id"]
+            else:
+                # The LLM may have misidentified a disciplina name as a student name
+                # e.g. "notas de fisica" → student_name: "fisica" instead of disciplina_name
+                if "disciplina_id" not in entities and "disciplina_name" not in entities:
+                    disciplina = (
+                        db.query(Disciplina)
+                        .filter(Disciplina.name.ilike(f"%{entities['student_name']}%"))
+                        .first()
+                    )
+                    if disciplina:
+                        entities["disciplina_id"] = disciplina.id
+                        del entities["student_name"]
     
     # Resolve disciplina name to ID
     if "disciplina_name" in entities and "disciplina_id" not in entities:
@@ -276,6 +288,9 @@ def execute_tools(state: AgentState) -> AgentState:
                     modulo=entities.get("modulo")
                 )
                 state["tool_result"] = result
+            
+            elif intent == Intent.DELETE_GRADE:
+                raise FeatureNotAvailableError("delete")
             
             else:
                 state["tool_result"] = None

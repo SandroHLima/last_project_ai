@@ -11,17 +11,24 @@ from .models import Base
 
 def _ensure_database_exists():
     """Create the MySQL database if it does not already exist."""
+    # Only attempt to create a database for server-based DBs (e.g. MySQL).
+    # For SQLite (file or memory) there's no server to create.
     from urllib.parse import urlparse
 
     parsed = urlparse(settings.database_url)
-    db_name = parsed.path.lstrip("/")
-    # Build a URL without the database name so we can connect to the server
-    server_url = settings.database_url.rsplit("/", 1)[0]
-    tmp_engine = create_engine(server_url, pool_pre_ping=True)
-    with tmp_engine.connect() as conn:
-        conn.execute(text(f"CREATE DATABASE IF NOT EXISTS `{db_name}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"))
-        conn.commit()
-    tmp_engine.dispose()
+    scheme = parsed.scheme or ""
+    if scheme.startswith("mysql") or scheme.startswith("postgres"):
+        db_name = parsed.path.lstrip("/")
+        # Build a URL without the database name so we can connect to the server
+        server_url = settings.database_url.rsplit("/", 1)[0]
+        tmp_engine = create_engine(server_url, pool_pre_ping=True)
+        with tmp_engine.connect() as conn:
+            conn.execute(text(f"CREATE DATABASE IF NOT EXISTS `{db_name}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"))
+            conn.commit()
+        tmp_engine.dispose()
+    else:
+        # No-op for SQLite and other file-based DBs
+        return
 
 
 # Create engine
@@ -34,6 +41,12 @@ engine = create_engine(
 
 # Create session factory
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+# If using SQLite locally, create tables immediately to make scripts/tests
+# usable without running the API lifespan initializer.
+from urllib.parse import urlparse
+if settings.database_url.startswith("sqlite"):
+    Base.metadata.create_all(bind=engine)
 
 
 def init_db():

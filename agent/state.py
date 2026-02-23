@@ -9,6 +9,7 @@ class Intent(str, Enum):
     """Possible intents detected from user messages."""
     ADD_GRADE = "add_grade"
     UPDATE_GRADE = "update_grade"
+    DELETE_GRADE = "delete_grade"
     QUERY_GRADES = "query_grades"
     SUMMARY = "summary"
     CLASS_REPORT = "class_report"
@@ -96,6 +97,7 @@ class Entities(TypedDict, total=False):
 REQUIRED_FIELDS = {
     Intent.ADD_GRADE: ["student_id", "disciplina_id", "turma_id", "modulo", "descricao", "valor"],
     Intent.UPDATE_GRADE: ["grade_id"],  # At least one of: valor, modulo, descricao
+    Intent.DELETE_GRADE: [],  # Always blocked — no fields needed
     Intent.QUERY_GRADES: [],  # student_id defaults to self for students
     Intent.SUMMARY: [],  # student_id defaults to self for students
     Intent.CLASS_REPORT: ["turma_id"],

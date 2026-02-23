@@ -28,6 +28,7 @@ Sua tarefa é extrair a INTENÇÃO e as ENTIDADES de uma mensagem do usuário.
 INTENÇÕES POSSÍVEIS:
 - add_grade: Professor quer adicionar uma nova nota
 - update_grade: Professor quer atualizar/modificar uma nota existente
+- delete_grade: Apagar/eliminar/remover uma nota ou avaliação
 - query_grades: Consultar notas (professor ou aluno)
 - summary: Ver resumo/médias de notas
 - class_report: Professor quer relatório de turma
@@ -169,7 +170,9 @@ Responda APENAS em formato JSON válido:
         entities = {}
         
         # Detect intent based on keywords
-        if any(word in message_lower for word in ["adicionar", "inserir", "nova nota", "add"]):
+        if any(word in message_lower for word in ["apagar", "deletar", "delete", "remover", "excluir", "eliminar"]):
+            intent = Intent.DELETE_GRADE
+        elif any(word in message_lower for word in ["adicionar", "inserir", "nova nota", "add"]):
             intent = Intent.ADD_GRADE
         elif any(word in message_lower for word in ["atualizar", "modificar", "alterar", "update", "mudar"]):
             intent = Intent.UPDATE_GRADE

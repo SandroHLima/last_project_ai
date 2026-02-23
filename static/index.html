@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>School Grades Agent</title>
+  <style>
+    /* ── Reset & Variables ───────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #f0f2f5; --surface: #ffffff; --primary: #4f46e5;
+      --primary-light: #818cf8; --primary-dark: #3730a3;
+      --text: #1e293b; --text-muted: #64748b; --border: #e2e8f0;
+      --success: #22c55e; --danger: #ef4444; --warning: #f59e0b;
+      --radius: 12px; --shadow: 0 1px 3px rgba(0,0,0,.08);
+      --shadow-lg: 0 4px 24px rgba(0,0,0,.12);
+    }
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--bg); color: var(--text);
+      min-height: 100vh; display: flex; flex-direction: column;
+    }
+
+    /* ── Header ──────────────────────────────────────────── */
+    header {
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      color: #fff; padding: 16px 24px; display: flex;
+      align-items: center; justify-content: space-between;
+      box-shadow: var(--shadow-lg); position: sticky; top: 0; z-index: 100;
+    }
+    header h1 { font-size: 1.25rem; font-weight: 700; letter-spacing: -.02em; }
+    header .subtitle { font-size: .8rem; opacity: .8; margin-top: 2px; }
+
+    /* user selector in header */
+    .user-selector {
+      display: flex; align-items: center; gap: 10px;
+    }
+    .user-selector label { font-size: .85rem; opacity: .9; }
+    .user-selector select {
+      padding: 6px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,.3);
+      background: rgba(255,255,255,.15); color: #fff; font-size: .85rem;
+      cursor: pointer; min-width: 200px;
+    }
+    .user-selector select option { color: var(--text); background: var(--surface); }
+    .user-badge {
+      display: inline-block; padding: 2px 10px; border-radius: 20px;
+      font-size: .75rem; font-weight: 600; text-transform: uppercase;
+    }
+    .badge-teacher { background: rgba(34,197,94,.25); color: #bbf7d0; }
+    .badge-student { background: rgba(96,165,250,.25); color: #bfdbfe; }
+
+    /* ── Nav Tabs ─────────────────────────────────────────── */
+    .tabs {
+      display: flex; background: var(--surface); border-bottom: 1px solid var(--border);
+      padding: 0 24px; gap: 0;
+    }
+    .tab-btn {
+      padding: 14px 24px; cursor: pointer; font-size: .9rem; font-weight: 500;
+      color: var(--text-muted); background: none; border: none;
+      border-bottom: 3px solid transparent; transition: all .2s;
+    }
+    .tab-btn:hover { color: var(--primary); }
+    .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+
+    /* ── Main Layout ──────────────────────────────────────── */
+    main { flex: 1; padding: 24px; max-width: 1200px; width: 100%; margin: 0 auto; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* ── Cards ─────────────────────────────────────────────── */
+    .card {
+      background: var(--surface); border-radius: var(--radius);
+      box-shadow: var(--shadow); padding: 24px; margin-bottom: 20px;
+    }
+    .card h2 { font-size: 1.1rem; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+    .card h2 .icon { font-size: 1.3rem; }
+
+    /* ── Chat ──────────────────────────────────────────────── */
+    .chat-container { display: flex; flex-direction: column; height: calc(100vh - 200px); min-height: 400px; }
+    .chat-messages {
+      flex: 1; overflow-y: auto; padding: 20px 0; display: flex;
+      flex-direction: column; gap: 16px;
+    }
+    .chat-bubble {
+      max-width: 80%; padding: 14px 18px; border-radius: 16px;
+      line-height: 1.55; font-size: .9rem; white-space: pre-wrap;
+      word-wrap: break-word; animation: fadeIn .25s ease;
+    }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+    .bubble-user {
+      align-self: flex-end; background: var(--primary); color: #fff;
+      border-bottom-right-radius: 4px;
+    }
+    .bubble-agent {
+      align-self: flex-start; background: #f1f5f9; color: var(--text);
+      border-bottom-left-radius: 4px;
+    }
+    .bubble-blocked {
+      align-self: flex-start; background: #fef2f2; color: var(--danger);
+      border: 1px solid #fecaca; border-bottom-left-radius: 4px;
+    }
+    .bubble-meta { font-size: .7rem; opacity: .6; margin-top: 6px; }
+    .chat-input-row {
+      display: flex; gap: 10px; padding-top: 16px;
+      border-top: 1px solid var(--border);
+    }
+    .chat-input-row input {
+      flex: 1; padding: 12px 16px; border: 1px solid var(--border);
+      border-radius: 10px; font-size: .9rem; outline: none;
+      transition: border-color .2s;
+    }
+    .chat-input-row input:focus { border-color: var(--primary); }
+    .btn {
+      padding: 10px 24px; border: none; border-radius: 10px;
+      font-size: .9rem; font-weight: 600; cursor: pointer;
+      transition: all .15s; display: inline-flex; align-items: center; gap: 6px;
+    }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-dark); }
+    .btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+    .btn-secondary { background: var(--border); color: var(--text); }
+    .btn-secondary:hover { background: #cbd5e1; }
+    .btn-sm { padding: 6px 14px; font-size: .8rem; }
+    .btn-danger { background: var(--danger); color: #fff; }
+
+    /* ── Tables ─────────────────────────────────────────────── */
+    table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+    thead th {
+      text-align: left; padding: 10px 12px; border-bottom: 2px solid var(--border);
+      font-weight: 600; color: var(--text-muted); font-size: .8rem;
+      text-transform: uppercase; letter-spacing: .04em;
+    }
+    tbody td {
+      padding: 10px 12px; border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+    tbody tr:hover { background: #f8fafc; }
+    .role-badge {
+      display: inline-block; padding: 2px 10px; border-radius: 20px;
+      font-size: .75rem; font-weight: 600;
+    }
+    .role-teacher { background: #dcfce7; color: #166534; }
+    .role-student { background: #dbeafe; color: #1e40af; }
+
+    /* ── Forms ──────────────────────────────────────────────── */
+    .form-row { display: flex; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+    .form-group { display: flex; flex-direction: column; flex: 1; min-width: 180px; }
+    .form-group label { font-size: .8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 4px; }
+    .form-group input, .form-group select {
+      padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px;
+      font-size: .85rem; outline: none; transition: border-color .2s;
+    }
+    .form-group input:focus, .form-group select:focus { border-color: var(--primary); }
+
+    /* ── Stats row ─────────────────────────────────────────── */
+    .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; margin-bottom: 20px; }
+    .stat-card {
+      background: var(--surface); border-radius: var(--radius); padding: 20px;
+      box-shadow: var(--shadow); text-align: center;
+    }
+    .stat-value { font-size: 2rem; font-weight: 700; color: var(--primary); }
+    .stat-label { font-size: .8rem; color: var(--text-muted); margin-top: 4px; }
+
+    /* ── Spinner ────────────────────────────────────────────── */
+    .spinner {
+      display: inline-block; width: 18px; height: 18px; border: 2px solid rgba(0,0,0,.1);
+      border-left-color: var(--primary); border-radius: 50%;
+      animation: spin .6s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Toast ──────────────────────────────────────────────── */
+    .toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; }
+    .toast {
+      padding: 12px 20px; border-radius: 10px; color: #fff; font-size: .85rem;
+      box-shadow: var(--shadow-lg); animation: slideIn .3s ease;
+      min-width: 260px;
+    }
+    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: none; opacity: 1; } }
+    .toast-success { background: var(--success); }
+    .toast-error { background: var(--danger); }
+
+    /* ── Responsive ────────────────────────────────────────── */
+    @media (max-width: 768px) {
+      main { padding: 12px; }
+      .chat-container { height: calc(100vh - 240px); }
+      .tabs { overflow-x: auto; }
+      .tab-btn { padding: 12px 16px; white-space: nowrap; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══════ HEADER ══════ -->
+<header>
+  <div>
+    <h1>School Grades Agent</h1>
+    <div class="subtitle">Sistema de Gestão de Avaliações Escolares</div>
+  </div>
+  <div class="user-selector">
+    <label for="currentUser">Utilizador:</label>
+    <select id="currentUser"></select>
+    <span id="roleBadge" class="user-badge"></span>
+  </div>
+</header>
+
+<!-- ══════ TABS ══════ -->
+<div class="tabs">
+  <button class="tab-btn active" data-tab="chat">💬 Chat</button>
+  <button class="tab-btn" data-tab="grades">📊 Notas</button>
+  <button class="tab-btn" data-tab="users">👥 Utilizadores</button>
+  <button class="tab-btn" data-tab="reports">📋 Relatórios</button>
+</div>
+
+<!-- ══════ MAIN ══════ -->
+<main>
+
+  <!-- ── Chat Tab ── -->
+  <div id="tab-chat" class="tab-content active">
+    <div class="card chat-container">
+      <div class="chat-messages" id="chatMessages">
+        <div class="bubble-agent chat-bubble">
+          Olá! 👋 Sou o assistente de avaliações escolares.<br><br>
+          Posso ajudá-lo com:<br>
+          • Consultar notas e médias<br>
+          • Adicionar ou atualizar notas (professores)<br>
+          • Gerar relatórios de turma<br><br>
+          Selecione o seu utilizador acima e escreva a sua pergunta.
+        </div>
+      </div>
+      <div class="chat-input-row">
+        <input type="text" id="chatInput" placeholder="Escreva a sua mensagem..." autocomplete="off" />
+        <button class="btn btn-primary" id="chatSend" onclick="sendChat()">
+          Enviar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Grades Tab ── -->
+  <div id="tab-grades" class="tab-content">
+    <div class="stats-row" id="gradeStats"></div>
+    <div class="card">
+      <h2><span class="icon">📊</span> Notas</h2>
+      <div class="form-row" style="margin-bottom:16px">
+        <div class="form-group" style="max-width:200px">
+          <label>Disciplina</label>
+          <select id="filterDisciplina" onchange="loadGrades()">
+            <option value="">Todas</option>
+          </select>
+        </div>
+        <div style="display:flex;align-items:flex-end">
+          <button class="btn btn-secondary btn-sm" onclick="loadGrades()">Atualizar</button>
+        </div>
+      </div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead>
+            <tr>
+              <th>Aluno</th>
+              <th>Disciplina</th>
+              <th>Módulo</th>
+              <th>Descrição</th>
+              <th>Nota</th>
+              <th>Data</th>
+            </tr>
+          </thead>
+          <tbody id="gradesBody"></tbody>
+        </table>
+      </div>
+      <p id="gradesEmpty" style="display:none;text-align:center;padding:30px;color:var(--text-muted)">
+        Nenhuma nota encontrada.
+      </p>
+    </div>
+  </div>
+
+  <!-- ── Users Tab ── -->
+  <div id="tab-users" class="tab-content">
+    <div class="card">
+      <h2><span class="icon">➕</span> Criar Utilizador</h2>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Nome</label>
+          <input type="text" id="newUserName" placeholder="Nome completo" />
+        </div>
+        <div class="form-group" style="max-width:160px">
+          <label>Papel</label>
+          <select id="newUserRole">
+            <option value="student">Aluno</option>
+            <option value="teacher">Professor</option>
+          </select>
+        </div>
+        <div class="form-group" style="max-width:180px">
+          <label>Turma</label>
+          <select id="newUserTurma"><option value="">— nenhuma —</option></select>
+        </div>
+        <div style="display:flex;align-items:flex-end">
+          <button class="btn btn-primary btn-sm" onclick="createUser()">Criar</button>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <h2><span class="icon">👥</span> Utilizadores</h2>
+      <div style="overflow-x:auto">
+        <table>
+          <thead>
+            <tr><th>ID</th><th>Nome</th><th>Papel</th></tr>
+          </thead>
+          <tbody id="usersBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Reports Tab ── -->
+  <div id="tab-reports" class="tab-content">
+    <div class="card">
+      <h2><span class="icon">📋</span> Relatório de Turma</h2>
+      <div class="form-row">
+        <div class="form-group" style="max-width:200px">
+          <label>Turma</label>
+          <select id="reportTurma"></select>
+        </div>
+        <div class="form-group" style="max-width:200px">
+          <label>Disciplina</label>
+          <select id="reportDisciplina"><option value="">Todas</option></select>
+        </div>
+        <div style="display:flex;align-items:flex-end">
+          <button class="btn btn-primary btn-sm" onclick="loadReport()">Gerar</button>
+        </div>
+      </div>
+      <div id="reportResult" style="margin-top:16px"></div>
+    </div>
+  </div>
+
+</main>
+
+<!-- Toast container -->
+<div class="toast-container" id="toasts"></div>
+
+<script>
+/* ────────────────────────── State ──────────────────────── */
+let currentUserId = null;
+let currentRole = null;
+let allUsers = [];
+
+/* ────────────────────────── Init ──────────────────────── */
+document.addEventListener('DOMContentLoaded', async () => {
+  await loadUsers();
+  await loadTurmas();
+  setupTabs();
+  setupChatEnter();
+});
+
+/* ────────────────────────── Tabs ──────────────────────── */
+function setupTabs() {
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+      // Lazy-load data for tab
+      if (btn.dataset.tab === 'grades') loadGrades();
+      if (btn.dataset.tab === 'users') refreshUsersList();
+      if (btn.dataset.tab === 'reports') {}
+    });
+  });
+}
+
+/* ────────────────────────── Users ─────────────────────── */
+async function loadUsers() {
+  try {
+    const res = await fetch('/users/');
+    allUsers = await res.json();
+    const sel = document.getElementById('currentUser');
+    sel.innerHTML = '';
+    allUsers.forEach(u => {
+      const opt = document.createElement('option');
+      opt.value = u.id;
+      opt.textContent = `${u.name} (${u.role === 'teacher' ? 'Prof.' : 'Aluno'})`;
+      sel.appendChild(opt);
+    });
+    sel.addEventListener('change', onUserChange);
+    if (allUsers.length) {
+      sel.value = allUsers[0].id;
+      onUserChange();
+    }
+  } catch (e) {
+    toast('Erro ao carregar utilizadores', 'error');
+  }
+}
+
+function onUserChange() {
+  const sel = document.getElementById('currentUser');
+  currentUserId = parseInt(sel.value);
+  const user = allUsers.find(u => u.id === currentUserId);
+  currentRole = user ? user.role : null;
+  const badge = document.getElementById('roleBadge');
+  if (user) {
+    badge.textContent = user.role === 'teacher' ? 'Professor' : 'Aluno';
+    badge.className = 'user-badge ' + (user.role === 'teacher' ? 'badge-teacher' : 'badge-student');
+  }
+}
+
+async function refreshUsersList() {
+  try {
+    const res = await fetch('/users/');
+    allUsers = await res.json();
+    const tbody = document.getElementById('usersBody');
+    tbody.innerHTML = '';
+    allUsers.forEach(u => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${u.id}</td>
+        <td>${u.name}</td>
+        <td><span class="role-badge ${u.role === 'teacher' ? 'role-teacher' : 'role-student'}">${
+          u.role === 'teacher' ? 'Professor' : 'Aluno'
+        }</span></td>`;
+      tbody.appendChild(tr);
+    });
+  } catch (e) {
+    toast('Erro ao carregar utilizadores', 'error');
+  }
+}
+
+async function createUser() {
+  const name = document.getElementById('newUserName').value.trim();
+  const role = document.getElementById('newUserRole').value;
+  const turmaVal = document.getElementById('newUserTurma').value;
+  if (!name) { toast('Preencha o nome', 'error'); return; }
+  const payload = { name, role };
+  if (role === 'student' && turmaVal) payload.turma_ids = [parseInt(turmaVal)];
+  try {
+    const res = await fetch('/users/', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) { const e = await res.json(); throw new Error(e.detail || 'Erro'); }
+    toast(`Utilizador "${name}" criado com sucesso!`, 'success');
+    document.getElementById('newUserName').value = '';
+    await loadUsers();
+    refreshUsersList();
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+/* ────────────────────────── Turmas ────────────────────── */
+async function loadTurmas() {
+  try {
+    const res = await fetch('/tools/turmas');
+    const turmas = await res.json();
+    ['newUserTurma', 'reportTurma'].forEach(id => {
+      const sel = document.getElementById(id);
+      const keep = sel.querySelector('option[value=""]');
+      sel.innerHTML = '';
+      if (keep) sel.appendChild(keep);
+      turmas.forEach(t => {
+        const opt = document.createElement('option');
+        opt.value = t.id;
+        opt.textContent = t.name;
+        sel.appendChild(opt);
+      });
+    });
+    // Disciplinas dropdown
+    await loadDisciplinas();
+  } catch (e) { console.error(e); }
+}
+
+async function loadDisciplinas() {
+  // We'll fetch summary for a known teacher to get disciplina names
+  // Alternative: query the grades endpoint and extract unique disciplinas
+  // For now populate from a quick grades query
+  try {
+    if (!currentUserId) return;
+    const res = await fetch('/tools/grades/query', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ requester_id: currentUserId, student_id: currentUserId })
+    });
+    if (res.ok) {
+      const data = await res.json();
+      const names = new Map();
+      (data.grades || []).forEach(g => {
+        if (g.disciplina_name && g.disciplina_id) names.set(g.disciplina_id, g.disciplina_name);
+      });
+      ['filterDisciplina', 'reportDisciplina'].forEach(id => {
+        const sel = document.getElementById(id);
+        const first = sel.querySelector('option[value=""]');
+        sel.innerHTML = '';
+        if (first) sel.appendChild(first);
+        names.forEach((name, did) => {
+          const opt = document.createElement('option');
+          opt.value = did;
+          opt.textContent = name;
+          sel.appendChild(opt);
+        });
+      });
+    }
+  } catch(e) { console.error(e); }
+}
+
+/* ────────────────────────── Grades ────────────────────── */
+async function loadGrades() {
+  if (!currentUserId) return;
+  try {
+    const discId = document.getElementById('filterDisciplina').value || null;
+    const payload = { requester_id: currentUserId, student_id: currentUserId };
+    if (discId) payload.disciplina_id = parseInt(discId);
+
+    const res = await fetch('/tools/grades/query', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) { const e = await res.json(); throw new Error(e.detail || 'Erro'); }
+    const data = await res.json();
+    const grades = data.grades || [];
+    const tbody = document.getElementById('gradesBody');
+    const empty = document.getElementById('gradesEmpty');
+    tbody.innerHTML = '';
+
+    if (grades.length === 0) {
+      empty.style.display = 'block';
+      document.getElementById('gradeStats').innerHTML = '';
+      return;
+    }
+    empty.style.display = 'none';
+
+    // Stats
+    const valores = grades.map(g => g.valor);
+    const avg = (valores.reduce((a,b) => a+b, 0) / valores.length).toFixed(1);
+    const mn = Math.min(...valores).toFixed(1);
+    const mx = Math.max(...valores).toFixed(1);
+    document.getElementById('gradeStats').innerHTML = `
+      <div class="stat-card"><div class="stat-value">${grades.length}</div><div class="stat-label">Total Avaliações</div></div>
+      <div class="stat-card"><div class="stat-value">${avg}</div><div class="stat-label">Média</div></div>
+      <div class="stat-card"><div class="stat-value">${mn}</div><div class="stat-label">Mínima</div></div>
+      <div class="stat-card"><div class="stat-value">${mx}</div><div class="stat-label">Máxima</div></div>
+    `;
+
+    grades.forEach(g => {
+      const tr = document.createElement('tr');
+      const d = g.date ? new Date(g.date).toLocaleDateString('pt-PT') : '—';
+      tr.innerHTML = `
+        <td>${g.student_name || '—'}</td>
+        <td>${g.disciplina_name || '—'}</td>
+        <td>${g.modulo || '—'}</td>
+        <td>${g.descricao || '—'}</td>
+        <td><strong>${g.valor}</strong></td>
+        <td>${d}</td>`;
+      tbody.appendChild(tr);
+    });
+  } catch (e) {
+    toast(e.message, 'error');
+  }
+}
+
+/* ────────────────────────── Reports ───────────────────── */
+async function loadReport() {
+  if (!currentUserId) return;
+  const turmaId = document.getElementById('reportTurma').value;
+  if (!turmaId) { toast('Selecione uma turma', 'error'); return; }
+  const discId = document.getElementById('reportDisciplina').value || undefined;
+  const container = document.getElementById('reportResult');
+  container.innerHTML = '<div class="spinner"></div> A gerar relatório...';
+
+  try {
+    const payload = { requester_id: currentUserId, turma_id: parseInt(turmaId) };
+    if (discId) payload.disciplina_id = parseInt(discId);
+
+    const res = await fetch('/tools/reports/class', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) { const e = await res.json(); throw new Error(e.detail || 'Erro'); }
+    const data = await res.json();
+
+    let html = `<div class="stats-row">
+      <div class="stat-card"><div class="stat-value">${data.total_students}</div><div class="stat-label">Alunos</div></div>`;
+    if (data.class_statistics) {
+      html += `
+        <div class="stat-card"><div class="stat-value">${data.class_statistics.mean ?? '—'}</div><div class="stat-label">Média Turma</div></div>
+        <div class="stat-card"><div class="stat-value">${data.class_statistics.median ?? '—'}</div><div class="stat-label">Mediana</div></div>
+        <div class="stat-card"><div class="stat-value">${data.class_statistics.total_grades ?? 0}</div><div class="stat-label">Avaliações</div></div>`;
+    }
+    html += '</div>';
+
+    html += '<table><thead><tr><th>Aluno</th><th>Média</th><th>Mín</th><th>Máx</th><th>Avaliações</th></tr></thead><tbody>';
+    (data.students || []).sort((a,b) => (b.average||0) - (a.average||0)).forEach(s => {
+      html += `<tr>
+        <td>${s.student_name}</td>
+        <td><strong>${s.average ?? '—'}</strong></td>
+        <td>${s.min_grade ?? '—'}</td>
+        <td>${s.max_grade ?? '—'}</td>
+        <td>${s.total_evaluations}</td>
+      </tr>`;
+    });
+    html += '</tbody></table>';
+    container.innerHTML = html;
+  } catch (e) {
+    container.innerHTML = `<p style="color:var(--danger)">${e.message}</p>`;
+  }
+}
+
+/* ────────────────────────── Chat ──────────────────────── */
+function setupChatEnter() {
+  document.getElementById('chatInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); }
+  });
+}
+
+async function sendChat() {
+  const input = document.getElementById('chatInput');
+  const msg = input.value.trim();
+  if (!msg || !currentUserId) return;
+  input.value = '';
+
+  appendBubble(msg, 'user');
+  const loadingId = appendBubble('<div class="spinner"></div> A processar...', 'agent', true);
+
+  try {
+    const res = await fetch('/agent/chat', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: currentUserId, message: msg })
+    });
+    const data = await res.json();
+    removeBubble(loadingId);
+
+    if (data.blocked) {
+      appendBubble(`🚫 ${data.response}`, 'blocked');
+    } else {
+      const intentLabel = data.intent ? `[${data.intent}]` : '';
+      appendBubble(data.response, 'agent', false, intentLabel);
+    }
+  } catch (e) {
+    removeBubble(loadingId);
+    appendBubble('Erro de comunicação com o servidor.', 'blocked');
+  }
+}
+
+let bubbleCounter = 0;
+function appendBubble(html, type, isHtml = false, meta = '') {
+  const container = document.getElementById('chatMessages');
+  const div = document.createElement('div');
+  const id = 'bubble-' + (++bubbleCounter);
+  div.id = id;
+  div.className = `chat-bubble bubble-${type}`;
+  if (isHtml) div.innerHTML = html;
+  else div.textContent = html;
+  if (meta) {
+    const metaDiv = document.createElement('div');
+    metaDiv.className = 'bubble-meta';
+    metaDiv.textContent = meta;
+    div.appendChild(metaDiv);
+  }
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+  return id;
+}
+
+function removeBubble(id) {
+  const el = document.getElementById(id);
+  if (el) el.remove();
+}
+
+/* ────────────────────────── Toast ─────────────────────── */
+function toast(msg, type = 'success') {
+  const container = document.getElementById('toasts');
+  const div = document.createElement('div');
+  div.className = `toast toast-${type}`;
+  div.textContent = msg;
+  container.appendChild(div);
+  setTimeout(() => { div.style.opacity = '0'; setTimeout(() => div.remove(), 300); }, 3500);
+}
+</script>
+</body>
+</html>

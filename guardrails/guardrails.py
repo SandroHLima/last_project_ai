@@ -30,13 +30,16 @@ class GuardrailPre:
     """
     
     # Patterns that indicate a student trying to access other students' data
+    # Note: Portuguese uses "do/da" (gendered articles) with person names,
+    # while "de" is used with disciplina names ("notas de matemática").
+    # We only match do/da to avoid false positives on disciplina queries.
     OTHER_STUDENT_PATTERNS = [
-        r"notas?\s+(do|da|de)\s+(?!minhas?|meus?|minha)(\w+)",  # "notas do João"
+        r"notas?\s+(do|da)\s+(\w+)",  # "notas do João", "notas da Ana"
         r"grades?\s+(of|for)\s+(?!my|mine)(\w+)",  # "grades of John"
-        r"ver\s+notas?\s+(do|da|de)\s+(?!minhas?)(\w+)",  # "ver notas do Miguel"
-        r"mostra\s+(as\s+)?notas?\s+(do|da|de)\s+(?!minhas?)(\w+)",  # "mostra as notas do Pedro"
-        r"consultar?\s+notas?\s+(do|da|de)\s+(?!minhas?)(\w+)",  # "consultar notas da Ana"
-        r"médias?\s+(do|da|de)\s+(?!minhas?)(\w+)",  # "média do João"
+        r"ver\s+notas?\s+(do|da)\s+(\w+)",  # "ver notas do Miguel"
+        r"mostra\s+(as\s+)?notas?\s+(do|da)\s+(\w+)",  # "mostra as notas do Pedro"
+        r"consultar?\s+notas?\s+(do|da)\s+(\w+)",  # "consultar notas da Ana"
+        r"médias?\s+(do|da)\s+(\w+)",  # "média do João"
         r"relatório\s+(do|da|de)\s+aluno",  # "relatório do aluno"
         r"student_id\s*[:=]\s*(?!{user_id})\d+",  # explicit student_id different from user
     ]
@@ -77,6 +80,21 @@ class GuardrailPre:
         self.user_id = user_id
         self.role = role
     
+    # Patterns that indicate the user is asking about their OWN data
+    SELF_REFERENTIAL_PATTERNS = [
+        r"minhas?\s+notas?",
+        r"meus?\s+notas?",
+        r"minha\s+nota",
+        r"as\s+minhas\s+notas?",
+        r"my\s+grades?",
+    ]
+    
+    # Pattern to detect a capitalized name directly after "notas" (no preposition)
+    # e.g. "Notas Sandro", "Nota Miguel"
+    NAME_AFTER_NOTAS_PATTERN = re.compile(
+        r'\b[nN]otas?\s+([A-ZÁÀÂÃÉÈÊÍÏÓÔÕÖÚÜ][a-záàâãéèêíïóôõöúüç]+)'
+    )
+    
     def check(self, message: str) -> Tuple[GuardrailResult, Optional[str]]:
         """
         Check if a request should be allowed.
@@ -99,20 +117,38 @@ class GuardrailPre:
         
         # Student-specific checks
         if self.role == "student":
-            # Check for other student data access
-            if self._matches_any_pattern(message_lower, self.OTHER_STUDENT_PATTERNS):
-                return (
-                    GuardrailResult.BLOCK,
-                    "Não é possível aceder às notas de outros alunos. "
-                    "Apenas pode consultar as suas próprias notas."
-                )
-            
             # Check for write operations
             if self._matches_any_pattern(message_lower, self.WRITE_PATTERNS):
                 return (
                     GuardrailResult.BLOCK,
                     "Apenas professores podem adicionar ou modificar notas."
                 )
+            
+            # Check for other student data access
+            # Skip if message is self-referential ("minhas notas de matemática" is OK)
+            is_self = self._matches_any_pattern(
+                message_lower, self.SELF_REFERENTIAL_PATTERNS
+            )
+            
+            if not is_self:
+                # Check patterns with prepositions: "notas do João", "notas da Ana"
+                if self._matches_any_pattern(
+                    message_lower, self.OTHER_STUDENT_PATTERNS
+                ):
+                    return (
+                        GuardrailResult.BLOCK,
+                        "Não é possível aceder às notas de outros alunos. "
+                        "Apenas pode consultar as suas próprias notas."
+                    )
+                
+                # Check for capitalized name after "notas" without preposition
+                # e.g. "Notas Sandro" (uses original case to detect proper names)
+                if self.NAME_AFTER_NOTAS_PATTERN.search(message):
+                    return (
+                        GuardrailResult.BLOCK,
+                        "Não é possível aceder às notas de outros alunos. "
+                        "Apenas pode consultar as suas próprias notas."
+                    )
         
         return (GuardrailResult.ALLOW, None)
     

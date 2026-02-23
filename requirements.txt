@@ -1,18 +1,19 @@
 # Core dependencies
 fastapi==0.109.0
 uvicorn==0.27.0
-pydantic==2.5.3
-pydantic-settings==2.1.0
+pydantic>=2.7.4,<3.0.0
+# pydantic-settings needs to be >=2.4 for langchain-community
+pydantic-settings>=2.4.0,<3.0.0
 
 # Database
 sqlalchemy==2.0.25
 pymysql==1.1.0
 cryptography==41.0.7
 
-# LangGraph and LangChain
-langgraph==0.0.55
-langchain>=0.2,<0.3
-langchain-community>=0.2,<0.3
+# LangGraph and LangChain (use versions compatible with pydantic v2)
+langgraph>=0.0.55
+langchain==0.3.27
+langchain-community==0.3.31
 
 # Utilities
 python-dotenv==1.0.0

@@ -2,17 +2,6 @@
 
 Agente de avaliações escolares acessível via API, com controlo de acesso baseado em roles (Professor/Aluno) e guardrails de segurança.
 
-## Índice
-
-- [Objetivo](#objetivo)
-- [Arquitetura](#arquitetura)
-- [Modelo de Dados](#modelo-de-dados)
-- [Regras de Autorização](#regras-de-autorização)
-- [API Endpoints](#api-endpoints)
-- [Instalação](#instalação)
-- [Utilização](#utilização)
-- [Testes e Demonstração](#testes-e-demonstração)
-
 ## Objetivo
 
 Construir um agente de avaliações escolares acessível via API, onde:
@@ -50,8 +39,6 @@ Construir um agente de avaliações escolares acessível via API, onde:
 
 ## Modelo de Dados
 
-### Tabelas
-
 | Tabela | Campos |
 |--------|--------|
 | **users** | id, name, role (ENUM: 'student', 'teacher') |
@@ -62,219 +49,125 @@ Construir um agente de avaliações escolares acessível via API, onde:
 
 ## Regras de Autorização
 
-### Princípios
-
-1. **Nunca confiar no cliente para role** - Sempre: `role = get_user_role(user_id)` vindo da DB.
-2. **Aluno**:
-   - Só pode chamar tools que façam `WHERE student_id = user_id`
-   - Se o texto pedir "notas do João", deve ser bloqueado.
-3. **Professor**:
-   - Pode inserir/editar notas
-   - Pode consultar por qualquer aluno
-4. **Sem DELETE**:
-   - Não existe tool de apagar
-   - Insert e update apenas por professor
+1. **Nunca confiar no cliente para role** — Sempre: `role = get_user_role(user_id)` vindo da DB.
+2. **Aluno**: Só pode chamar tools que façam `WHERE student_id = user_id`. Pedidos como "notas do João" são bloqueados.
+3. **Professor**: Pode inserir/editar notas e consultar qualquer aluno.
+4. **Sem DELETE**: Não existe funcionalidade de apagar notas. Insert e update apenas por professor.
 
 ### Defesa em Duas Camadas
 
-1. **Guardrail**: Deteta intenção indevida e bloqueia.
-2. **Tool-layer enforcement**: Mesmo que o LLM tente, a tool recusa.
-   - Ex.: `get_student_grades(requester_user, target_student_id)` recusa se `role=student` e `target_student_id != requester_user.id`.
-
-## API Endpoints
-
-### Agent (Linguagem Natural)
-- `POST /agent/chat` - Enviar mensagem ao agente
-
-### Users
-- `GET /users/{user_id}` - Obter informação do utilizador
-- `GET /users/{user_id}/details` - Obter detalhes com turmas
-
-### Tools (Acesso Direto)
-- `POST /tools/grades/add` - Adicionar nota (professor)
-- `POST /tools/grades/update` - Atualizar nota (professor)
-- `POST /tools/grades/query` - Consultar notas
-- `GET /tools/grades/summary/{student_id}` - Resumo de notas
-- `POST /tools/reports/class` - Relatório de turma (professor)
-- `DELETE /tools/grades/{grade_id}` - **SEMPRE RETORNA 405** (não permitido)
-
-## Instalação
-
-### Requisitos
-- Python 3.10+
-- MySQL 8.0+
-- OpenAI API Key (para o parser LLM)
-
-### Passos
-
-1. **Clonar o repositório**
-```bash
-cd final_project
-```
-
-2. **Criar ambiente virtual**
-```bash
-python -m venv venv
-venv\Scripts\activate  # Windows
-source venv/bin/activate  # Linux/Mac
-```
-
-3. **Instalar dependências**
-```bash
-pip install -r requirements.txt
-```
-
-4. **Configurar variáveis de ambiente**
-```bash
-copy .env.example .env
-# Editar .env com as credenciais da base de dados e OpenAI API key
-```
-
-5. **Criar base de dados MySQL**
-```sql
-CREATE DATABASE school_grades CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-```
-
-6. **Inicializar e popular a base de dados**
-```bash
-python -m database.seed
-```
-
-7. **Iniciar o servidor**
-```bash
-python main.py
-# ou
-uvicorn main:app --reload
-```
-
-## Utilização
-
-### Via API - Linguagem Natural
-
-```bash
-# Aluno consulta as suas notas
-curl -X POST http://localhost:8000/agent/chat \
-  -H "Content-Type: application/json" \
-  -d '{"user_id": 3, "message": "Quero ver as minhas notas de Matemática"}'
-
-# Professor adiciona nota
-curl -X POST http://localhost:8000/agent/chat \
-  -H "Content-Type: application/json" \
-  -d '{"user_id": 1, "message": "Adicionar nota 18 ao Miguel em Matemática, Módulo 1, Teste 2"}'
-```
-
-### Via API - Acesso Direto
-
-```bash
-# Adicionar nota
-curl -X POST http://localhost:8000/tools/grades/add \
-  -H "Content-Type: application/json" \
-  -d '{
-    "teacher_id": 1,
-    "student_id": 3,
-    "disciplina_id": 1,
-    "turma_id": 1,
-    "modulo": "Módulo 1",
-    "descricao": "Teste 1",
-    "valor": 17.5
-  }'
-
-# Consultar notas
-curl -X POST http://localhost:8000/tools/grades/query \
-  -H "Content-Type: application/json" \
-  -d '{
-    "requester_id": 3,
-    "student_id": 3,
-    "disciplina_id": 1
-  }'
-```
-
-### Documentação Interativa
-
-Aceda a `http://localhost:8000/docs` para a documentação Swagger interativa.
-
-## Testes e Demonstração
-
-### Casos de Teste Obrigatórios
-
-Os seguintes cenários são testados na demonstração:
-
-1. **Aluno pede: "Mostra as notas do João"** → ❌ BLOQUEADO
-2. **Professor adiciona nota** → ✅ OK
-3. **Aluno pede as suas notas por disciplina/módulo** → ✅ OK
-4. **Professor pede relatório de turma/disciplinas** → ✅ OK
-5. **Tentativa de "apagar nota"** → ❌ RECUSADO (não existe feature)
-
-### Executar Demonstração
-
-```bash
-python tests/demo_guardrails.py
-```
-
-### Executar Testes Unitários
-
-```bash
-pytest tests/ -v
-```
-
-## Estrutura do Projeto
-
-```
-final_project/
-├── api/
-│   ├── __init__.py
-│   ├── routes.py          # Endpoints FastAPI
-│   └── schemas.py         # Schemas Pydantic
-├── agent/
-│   ├── __init__.py
-│   ├── state.py           # AgentState e Intents
-│   ├── parser.py          # Parser de intenções e entidades
-│   ├── nodes.py           # Nós do workflow LangGraph
-│   └── workflow.py        # Grafo LangGraph compilado
-├── config/
-│   ├── __init__.py
-│   └── settings.py        # Configurações da aplicação
-├── database/
-│   ├── __init__.py
-│   ├── models.py          # Modelos SQLAlchemy
-│   ├── connection.py      # Gestão de conexões
-│   ├── schema.sql         # Schema SQL para MySQL
-│   └── seed.py            # Script de dados de teste
-├── guardrails/
-│   ├── __init__.py
-│   └── guardrails.py      # Guardrails de segurança
-├── tools/
-│   ├── __init__.py
-│   ├── authorization.py   # Serviço de autorização
-│   ├── exceptions.py      # Exceções customizadas
-│   ├── identity.py        # Tools de identidade
-│   ├── grades_read.py     # Tools de leitura de notas
-│   ├── grades_write.py    # Tools de escrita de notas
-│   └── reporting.py       # Tools de relatórios
-├── tests/
-│   ├── __init__.py
-│   ├── demo_guardrails.py # Script de demonstração
-│   └── test_authorization.py # Testes unitários
-├── main.py                # Aplicação FastAPI principal
-├── requirements.txt       # Dependências Python
-├── .env.example          # Exemplo de configuração
-└── README.md             # Este ficheiro
-```
+1. **Guardrail**: Deteta intenção indevida e bloqueia antes da execução.
+2. **Tool-layer enforcement**: Mesmo que o LLM tente, a tool recusa (ex.: `get_student_grades` recusa se `role=student` e `target_student_id != requester_user.id`).
 
 ## Intents Suportados
 
 | Intent | Descrição | Roles |
 |--------|-----------|-------|
-| ADD_GRADE | Adicionar nova nota | Professor |
-| UPDATE_GRADE | Atualizar nota existente | Professor |
-| QUERY_GRADES | Consultar notas | Professor, Aluno (só próprias) |
-| SUMMARY | Ver médias e resumo | Professor, Aluno (só próprias) |
-| CLASS_REPORT | Relatório de turma | Professor |
-| FALLBACK | Mensagem não compreendida | Todos |
-| BLOCKED | Pedido bloqueado por guardrail | - |
+| `add_grade` | Adicionar nova nota | Professor |
+| `update_grade` | Atualizar nota existente | Professor |
+| `delete_grade` | Eliminar nota (sempre recusado) | — |
+| `query_grades` | Consultar notas | Professor, Aluno (só próprias) |
+| `summary` | Ver médias e resumo | Professor, Aluno (só próprias) |
+| `class_report` | Relatório de turma | Professor |
+| `fallback` | Mensagem não compreendida | Todos |
 
-## Licença
+## Instalação
 
-Este projeto foi desenvolvido como trabalho final académico.
-#   l a s t _ p r o j e c t _ a i  
- 
+### Requisitos
+- Python 3.11 ou 3.12
+- MySQL 8.0+
+- Ollama com modelo `qwen3:8b` (para o parser LLM)
+
+### Passos
+
+```bash
+# 1. Criar ambiente virtual
+python -m venv .venv
+.venv\Scripts\activate          # Windows
+# source .venv/bin/activate     # Linux/Mac
+
+# 2. Instalar dependências
+pip install -r requirements.txt
+
+# 3. Configurar variáveis de ambiente
+copy .env.example .env
+# Editar .env com as credenciais da base de dados
+
+# 4. Iniciar o servidor (cria tabelas e dados de teste automaticamente)
+python main.py
+```
+
+O servidor arranca em `http://localhost:8000`. A base de dados é criada e populada automaticamente no primeiro arranque.
+
+## API Endpoints
+
+| Método | Rota | Descrição |
+|--------|------|-----------|
+| `POST` | `/agent/chat` | Enviar mensagem ao agente (linguagem natural) |
+| `GET` | `/users/` | Listar utilizadores |
+| `POST` | `/users/` | Criar utilizador |
+| `GET` | `/users/{id}` | Obter utilizador |
+| `GET` | `/users/{id}/details` | Detalhes com turmas |
+| `POST` | `/tools/grades/add` | Adicionar nota (professor) |
+| `POST` | `/tools/grades/update` | Atualizar nota (professor) |
+| `POST` | `/tools/grades/query` | Consultar notas |
+| `GET` | `/tools/grades/summary/{id}` | Resumo de notas |
+| `POST` | `/tools/reports/class` | Relatório de turma (professor) |
+| `DELETE` | `/tools/grades/{id}` | **Sempre 405** (não permitido) |
+
+Documentação interativa: `http://localhost:8000/docs`
+
+## Testes
+
+```bash
+# Testes unitários
+pytest tests/ -v
+
+# Demonstração dos guardrails
+python tests/demo_guardrails.py
+```
+
+### Cenários Testados
+
+1. Aluno pede "Mostra as notas do João" → **BLOQUEADO**
+2. Professor adiciona nota → **OK**
+3. Aluno pede as suas notas por disciplina/módulo → **OK**
+4. Professor pede relatório de turma → **OK**
+5. Tentativa de "apagar nota" → **RECUSADO**
+
+## Estrutura do Projeto
+
+```
+├── main.py                  # Entrypoint FastAPI
+├── requirements.txt         # Dependências
+├── .env                     # Configuração (não versionado)
+├── agent/                   # LangGraph agent workflow
+│   ├── state.py             # AgentState, Intent enum
+│   ├── parser.py            # Parser LLM (Ollama/Qwen3)
+│   ├── nodes.py             # Nós do workflow
+│   └── workflow.py          # Grafo compilado
+├── api/                     # Camada HTTP
+│   ├── routes.py            # Endpoints FastAPI
+│   └── schemas.py           # Schemas Pydantic
+├── config/
+│   └── settings.py          # Configuração centralizada
+├── database/
+│   ├── models.py            # Modelos SQLAlchemy
+│   ├── connection.py        # Engine & sessões
+│   ├── schema.sql           # Schema SQL de referência
+│   └── seed.py              # Dados de teste
+├── guardrails/
+│   └── guardrails.py        # Guardrails pré/pós execução
+├── tools/                   # Ferramentas com autorização
+│   ├── authorization.py     # Serviço de autorização
+│   ├── exceptions.py        # Exceções customizadas
+│   ├── identity.py          # Gestão de utilizadores
+│   ├── grades.py            # Leitura e escrita de notas
+│   └── reporting.py         # Relatórios
+├── static/
+│   └── index.html           # Interface web
+└── tests/
+    ├── test_authorization.py # Testes unitários
+    ├── test_bug_fixes.py     # Testes de regressão
+    └── demo_guardrails.py    # Script de demonstração
+```

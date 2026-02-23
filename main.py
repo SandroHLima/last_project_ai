@@ -8,15 +8,27 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from config import settings
-from database import init_db
+from database import init_db, get_db_context, User
 from api import agent_router, tools_router, users_router
 
 
 # --------------- Lifespan ---------------
+
+def _auto_seed_if_empty():
+    """Populate the database with sample data if tables are empty."""
+    try:
+        with get_db_context() as db:
+            if db.query(User).count() == 0:
+                print("Empty database detected — seeding sample data...")
+                from database.seed import seed_database
+                seed_database()
+    except Exception as exc:
+        print(f"Auto-seed skipped ({exc})")
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -24,6 +36,7 @@ async def lifespan(app: FastAPI):
     if settings.debug:
         print("Initializing database...")
     init_db()
+    _auto_seed_if_empty()
     if settings.debug:
         print("Database initialized.")
     yield
@@ -59,7 +72,7 @@ API for managing school grades with an AI agent interface.
     lifespan=lifespan,
 )
 
-# Serve simple static admin page for user management
+# Serve static assets (CSS/JS/images)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Add CORS middleware
@@ -88,14 +101,10 @@ app.include_router(tools_router)
 app.include_router(users_router)
 
 
-@app.get("/", tags=["Health"])
+@app.get("/", tags=["UI"], include_in_schema=False)
 async def root():
-    """Root endpoint - API health check."""
-    return {
-        "status": "online",
-        "service": "School Grades Agent API",
-        "version": "1.0.0"
-    }
+    """Serve the web interface."""
+    return FileResponse("static/index.html")
 
 
 @app.get("/health", tags=["Health"])
@@ -104,7 +113,7 @@ async def health_check():
     return {"status": "healthy"}
 
 
-""" if __name__ == "__main__":
+if __name__ == "__main__":
     import uvicorn
 
     uvicorn.run(
@@ -113,4 +122,3 @@ async def health_check():
         port=settings.api_port,
         reload=settings.debug,
     )
- """
