@@ -11,6 +11,7 @@ class AgentRequest(BaseModel):
     """Request to the agent endpoint."""
     user_id: int = Field(..., description="ID of the requesting user")
     message: str = Field(..., description="User's message/query", min_length=1)
+    show_all: Optional[bool] = Field(False, description="Whether to request full results (no truncation)")
 
 
 class AddGradeRequest(BaseModel):

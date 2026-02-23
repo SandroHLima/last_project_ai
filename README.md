@@ -135,6 +135,39 @@ python tests/demo_guardrails.py
 4. Professor pede relatório de turma → **OK**
 5. Tentativa de "apagar nota" → **RECUSADO**
 
+## Alterações recentes & Testes rápidos
+
+Estas são as mudanças feitas recentemente e como testá-las rapidamente:
+
+- Modelo LLM: o repositório requer o modelo `qwen3:8b` no Ollama. Se não estiver instalado, execute:
+
+```bash
+ollama pull qwen3:8b
+```
+
+- Parser: o parser LLM foi endurecido — ele remove blocos `<think>` e tem um fallback rule-based mais robusto. Para reduzir latência, mensagens curtas (ex.: "minhas notas") agora usam o parser rule-based sem chamar o LLM.
+
+- Bloqueios: alunos são automaticamente bloqueados para operações de escrita (adicionar/editar notas) pelo guardrail pré-execução.
+
+- UI de testes: adicionei `static/prompts.html` com prompts prontos (inclui exemplos bloqueados) e um link no cabeçalho do SPA.
+
+- Mostrar tudo / truncamento: existe um toggle `Mostrar todas` no cabeçalho que envia `show_all` ao endpoint `/agent/chat`. As configurações padrão podem ser ajustadas em `config/settings.py` (`grades_truncate_default`, `grades_truncate_limit`).
+
+Testes rápidos (após arrancar o servidor):
+
+```bash
+# List users
+curl http://localhost:8000/users/
+
+# Agent: add grade (teacher id 21 in seeded DB)
+curl -X POST http://localhost:8000/agent/chat -H 'Content-Type: application/json' \
+    -d '{"user_id":21,"message":"adicionar nota 16 ao aluno Ana Costa em matematica turma 10A modulo 1 trabalho final"}'
+
+# Agent: list own grades (student id 23)
+curl -X POST http://localhost:8000/agent/chat -H 'Content-Type: application/json' \
+    -d '{"user_id":23,"message":"minhas notas"}'
+```
+
 ## Estrutura do Projeto
 
 ```

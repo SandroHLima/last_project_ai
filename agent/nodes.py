@@ -22,6 +22,7 @@ from tools import (
 from guardrails import check_pre_guardrail, sanitize_response
 from .state import AgentState, Intent, REQUIRED_FIELDS
 from .parser import get_parser
+from config import settings
 
 
 def load_user_context(state: AgentState) -> AgentState:
@@ -421,16 +422,24 @@ def _format_result(intent: Intent, result: Dict[str, Any]) -> str:
         grades = result.get("grades", [])
         if not grades:
             return "Nenhuma nota encontrada."
-        
         response = f"Notas de {student.get('name')}:\n"
-        for g in grades[:10]:  # Limit to 10
-            response += (
-                f"• {g.get('disciplina_name')} - {g.get('descricao')}: "
-                f"{g.get('valor')} ({g.get('modulo')})\n"
-            )
-        
-        if len(grades) > 10:
-            response += f"\n... e mais {len(grades) - 10} notas."
+        # Decide truncation: per-request `show_all` overrides settings
+        show_all = state.get("show_all", False) or (not settings.grades_truncate_default)
+        if show_all:
+            for g in grades:
+                response += (
+                    f"• {g.get('disciplina_name')} - {g.get('descricao')}: "
+                    f"{g.get('valor')} ({g.get('modulo')})\n"
+                )
+        else:
+            limit = settings.grades_truncate_limit or 10
+            for g in grades[:limit]:
+                response += (
+                    f"• {g.get('disciplina_name')} - {g.get('descricao')}: "
+                    f"{g.get('valor')} ({g.get('modulo')})\n"
+                )
+            if len(grades) > limit:
+                response += f"\n... e mais {len(grades) - limit} notas."
         
         return response
     

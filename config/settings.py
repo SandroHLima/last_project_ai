@@ -26,6 +26,10 @@ class Settings(BaseSettings):
     api_host: str = "0.0.0.0"
     api_port: int = 8000
     debug: bool = False
+    # Grades display settings
+    # If True, truncate long grade lists by default. The UI can override per-request.
+    grades_truncate_default: bool = False
+    grades_truncate_limit: int = 10
 
 
 @lru_cache()

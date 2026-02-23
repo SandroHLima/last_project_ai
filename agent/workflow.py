@@ -124,7 +124,7 @@ def get_compiled_graph():
     return _compiled_graph
 
 
-def run_agent(user_id: int, message: str) -> Dict[str, Any]:
+def run_agent(user_id: int, message: str, show_all: bool = False) -> Dict[str, Any]:
     """
     Run the agent with a user message.
     
@@ -143,6 +143,8 @@ def run_agent(user_id: int, message: str) -> Dict[str, Any]:
         "message": message,
         "blocked": False,
         "ask_missing_fields": False,
+        # Per-request flag from the UI/API to request full results
+        "show_all": bool(show_all),
     }
     
     # Run the graph

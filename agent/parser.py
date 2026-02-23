@@ -10,7 +10,7 @@ try:
 except Exception:
     ChatOllama = None
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.output_parsers import JsonOutputParser
+from langchain_core.output_parsers import JsonOutputParser, StrOutputParser
 
 from config import settings
 from .state import Intent, Entities
@@ -54,14 +54,15 @@ CONTEXTO DO USUÁRIO:
 Se o usuário é aluno e pede "minhas notas", o student_id deve ser o próprio user_id.
 Se o usuário menciona outro aluno por nome, extraia o student_name.
 
-Responda APENAS em formato JSON válido:
+Responda APENAS em formato JSON válido, sem explicações:
 {{
     "intent": "string (uma das intenções acima)",
     "entities": {{
         "campo": "valor"
     }},
     "confidence": "high/medium/low"
-}}"""
+}}
+/no_think"""
 
     def __init__(self):
         """Initialize the parser with LLM (Ollama / Qwen3)."""
@@ -76,7 +77,13 @@ Responda APENAS em formato JSON válido:
             ("human", "{message}")
         ])
         
-        self.chain = self.prompt | self.llm | JsonOutputParser()
+        # Use StrOutputParser so we can strip <think> tags before JSON parsing
+        self._raw_chain = self.prompt | self.llm | StrOutputParser()
+
+    @staticmethod
+    def _strip_think_tags(text: str) -> str:
+        """Remove <think>...</think> blocks that qwen3 may emit."""
+        return re.sub(r"<think>[\s\S]*?</think>", "", text).strip()
     
     def parse(
         self, 
@@ -97,13 +104,24 @@ Responda APENAS em formato JSON válido:
         Returns:
             Tuple of (intent, entities dict)
         """
+        # Quick heuristic: if the message is short and clearly a simple query
+        # (e.g. "minhas notas", "mostra as minhas notas"), skip the LLM
+        # to reduce latency and use the faster rule-based parser.
+        lower = message.lower().strip()
+        simple_triggers = ["minhas notas", "minha nota", "mostra as", "mostra", "ver as", "ver minhas", "minhas", "minha"]
+        if len(message) < 120 and any(t in lower for t in simple_triggers):
+            return self._rule_based_parse(message, user_id, role)
+
         try:
-            result = self.chain.invoke({
+            raw = self._raw_chain.invoke({
                 "message": message,
                 "user_id": user_id,
                 "role": role,
                 "user_name": user_name
             })
+            # Strip <think> blocks that qwen3 may prepend
+            clean = self._strip_think_tags(raw)
+            result = json.loads(clean)
             
             intent_str = result.get("intent", "fallback")
             entities = result.get("entities", {})
@@ -166,48 +184,74 @@ Responda APENAS em formato JSON válido:
         Returns:
             Tuple of (intent, entities)
         """
-        message_lower = message.lower()
-        entities = {}
-        
-        # Detect intent based on keywords
-        if any(word in message_lower for word in ["apagar", "deletar", "delete", "remover", "excluir", "eliminar"]):
+        msg = message
+        msg_lower = msg.lower()
+        entities: Dict[str, Any] = {}
+
+        # --- Detect intent ---
+        if any(w in msg_lower for w in ["apagar", "deletar", "delete", "remover", "excluir", "eliminar"]):
             intent = Intent.DELETE_GRADE
-        elif any(word in message_lower for word in ["adicionar", "inserir", "nova nota", "add"]):
+        elif any(w in msg_lower for w in ["adicionar", "inserir", "nova nota", "add", "lançar", "registar", "registrar"]):
             intent = Intent.ADD_GRADE
-        elif any(word in message_lower for word in ["atualizar", "modificar", "alterar", "update", "mudar"]):
+        elif any(w in msg_lower for w in ["atualizar", "modificar", "alterar", "update", "mudar"]):
             intent = Intent.UPDATE_GRADE
-        elif any(word in message_lower for word in ["média", "resumo", "summary", "médias"]):
+        elif any(w in msg_lower for w in ["média", "resumo", "summary", "médias"]):
             intent = Intent.SUMMARY
-        elif any(word in message_lower for word in ["relatório", "report", "turma"]) and role == "teacher":
+        elif any(w in msg_lower for w in ["relatório", "report"]) or ("turma" in msg_lower and role == "teacher" and not any(w in msg_lower for w in ["adicionar","inserir","nota"])):
             intent = Intent.CLASS_REPORT
-        elif any(word in message_lower for word in ["nota", "notas", "grades", "avaliação", "avaliações"]):
+        elif any(w in msg_lower for w in ["nota", "notas", "grades", "avaliação", "avaliações"]):
             intent = Intent.QUERY_GRADES
         else:
             intent = Intent.FALLBACK
-        
-        # Extract entities with regex
+
+        # --- Extract entities ---
+
         # Note value (0-20)
-        valor_match = re.search(r'\b(\d{1,2}(?:[.,]\d+)?)\s*(?:valores?|pontos?)?\b', message)
+        valor_match = re.search(r'\b(\d{1,2}(?:[.,]\d+)?)\s*(?:valores?|pontos?)?\b', msg)
         if valor_match:
             try:
                 entities["valor"] = float(valor_match.group(1).replace(",", "."))
             except ValueError:
                 pass
-        
+
         # Module
-        modulo_match = re.search(r'(módulo|capítulo|module)\s*(\d+|[IVX]+)', message_lower)
+        modulo_match = re.search(r'(?:módulo|modulo|capítulo|module)\s*(\d+|[IVX]+)', msg_lower)
         if modulo_match:
-            entities["modulo"] = f"Módulo {modulo_match.group(2)}"
-        
+            entities["modulo"] = f"Módulo {modulo_match.group(1)}"
+
         # Turma
-        turma_match = re.search(r'turma\s+(\d+[A-Za-z]?)', message_lower)
+        turma_match = re.search(r'turma\s+(\d+[A-Za-z]?)', msg_lower)
         if turma_match:
             entities["turma_name"] = turma_match.group(1).upper()
-        
+
+        # Student name — "aluno/a <Name>"
+        student_match = re.search(r'(?:aluno|aluna|estudante)\s+([A-ZÀ-Ú][a-zà-ú]+(?:\s+[A-ZÀ-Ú][a-zà-ú]+)*)', msg)
+        if student_match:
+            entities["student_name"] = student_match.group(1)
+
+        # Disciplina name — "em <Name>" / "disciplina <Name>" / "de <Name>"
+        disc_match = re.search(
+            r'(?:disciplina|em|de)\s+([A-ZÀ-Ú][a-zà-ú]+(?:\s+[A-ZÀ-Ú][a-zà-ú]+)*)',
+            msg
+        )
+        if disc_match:
+            candidate = disc_match.group(1)
+            # Avoid capturing the student name as disciplina if already matched
+            if "student_name" not in entities or candidate.lower() != entities["student_name"].lower():
+                entities["disciplina_name"] = candidate
+
+        # Descrição — "teste X" / "projeto" / "exame" / "trabalho"
+        desc_match = re.search(
+            r'(teste\s*\w*|exame\s*\w*|projeto\s*\w*|trabalho\s*\w*|prova\s*\w*)',
+            msg_lower
+        )
+        if desc_match:
+            entities["descricao"] = desc_match.group(1).strip().title()
+
         # If student asking for their own grades
         if role == "student" and intent in [Intent.QUERY_GRADES, Intent.SUMMARY]:
             entities["student_id"] = user_id
-        
+
         return intent, entities
 
 

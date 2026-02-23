@@ -201,6 +201,10 @@
     <label for="currentUser">Utilizador:</label>
     <select id="currentUser"></select>
     <span id="roleBadge" class="user-badge"></span>
+      <a href="/static/prompts.html" style="color:#fff;margin-left:8px;text-decoration:underline">Prompts</a>
+    <label style="color:#fff;margin-left:12px;display:flex;align-items:center;gap:6px"> 
+      <input type="checkbox" id="showAllToggle"> Mostrar todas
+    </label>
   </div>
 </header>
 
@@ -617,9 +621,10 @@ async function sendChat() {
   const loadingId = appendBubble('<div class="spinner"></div> A processar...', 'agent', true);
 
   try {
+    const showAll = document.getElementById('showAllToggle')?.checked || false;
     const res = await fetch('/agent/chat', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id: currentUserId, message: msg })
+      body: JSON.stringify({ user_id: currentUserId, message: msg, show_all: showAll })
     });
     const data = await res.json();
     removeBubble(loadingId);

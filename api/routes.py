@@ -69,7 +69,8 @@ async def agent_chat(request: AgentRequest, db: Session = Depends(get_db)):
     try:
         result = run_agent(
             user_id=request.user_id,
-            message=request.message
+            message=request.message,
+            show_all=bool(request.show_all)
         )
         return AgentResponse(**result)
     except InvalidUserError:
