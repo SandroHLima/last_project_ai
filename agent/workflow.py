@@ -1,6 +1,3 @@
-"""
-LangGraph workflow for the School Grades agent.
-"""
 from typing import Dict, Any
 from langgraph.graph import StateGraph, END
 

@@ -51,13 +51,6 @@ class GuardrailPre:
     ]
     
     def __init__(self, user_id: int, role: str):
-        """
-        Initialize guardrail with user context.
-        
-        Args:
-            user_id: The requesting user's ID
-            role: The user's role ('student' or 'teacher')
-        """
         self.user_id = user_id
         self.role = role
     
