@@ -392,14 +392,14 @@ def final_response(state: AgentState) -> AgentState:
             "- Relatórios de turma (apenas professores)"
         )
     elif result:
-        state["response"] = _format_result(intent, result)
+        state["response"] = _format_result(intent, result, state)
     else:
         state["response"] = "Operação concluída."
     
     return state
 
 
-def _format_result(intent: Intent, result: Dict[str, Any]) -> str:
+def _format_result(intent: Intent, result: Dict[str, Any], state: AgentState = None) -> str:
     """Format result for display."""
     if intent == Intent.ADD_GRADE:
         if result.get("success"):
@@ -424,7 +424,7 @@ def _format_result(intent: Intent, result: Dict[str, Any]) -> str:
             return "Nenhuma nota encontrada."
         response = f"Notas de {student.get('name')}:\n"
         # Decide truncation: per-request `show_all` overrides settings
-        show_all = state.get("show_all", False) or (not settings.grades_truncate_default)
+        show_all = (state or {}).get("show_all", False) or (not settings.grades_truncate_default)
         if show_all:
             for g in grades:
                 response += (
