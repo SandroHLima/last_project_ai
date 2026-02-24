@@ -1,9 +1,3 @@
-"""
-School Grades Agent API
-
-Main FastAPI application for the school grades management system.
-Provides both natural language agent interface and direct tool access.
-"""
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
@@ -19,7 +13,6 @@ from api import agent_router, tools_router, users_router
 # --------------- Lifespan ---------------
 
 def _auto_seed_if_empty():
-    """Populate the database with sample data if tables are empty."""
     try:
         with get_db_context() as db:
             if db.query(User).count() == 0:
@@ -32,7 +25,6 @@ def _auto_seed_if_empty():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Lifespan handler – initialise DB on startup."""
     if settings.debug:
         print("Initializing database...")
     init_db()
@@ -72,10 +64,8 @@ API for managing school grades with an AI agent interface.
     lifespan=lifespan,
 )
 
-# Serve static assets (CSS/JS/images)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -84,8 +74,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
-# Exception handler
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     """Global exception handler."""
@@ -94,8 +82,6 @@ async def global_exception_handler(request: Request, exc: Exception):
         content={"detail": str(exc), "type": type(exc).__name__}
     )
 
-
-# Include routers
 app.include_router(agent_router)
 app.include_router(tools_router)
 app.include_router(users_router)
@@ -103,13 +89,11 @@ app.include_router(users_router)
 
 @app.get("/", tags=["UI"], include_in_schema=False)
 async def root():
-    """Serve the web interface."""
     return FileResponse("static/index.html")
 
 
 @app.get("/health", tags=["Health"])
 async def health_check():
-    """Health check endpoint."""
     return {"status": "healthy"}
 
 
