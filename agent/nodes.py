@@ -1,6 +1,3 @@
-"""
-LangGraph nodes for the School Grades agent workflow.
-"""
 from typing import Dict, Any
 from sqlalchemy.orm import Session
 
@@ -26,16 +23,6 @@ from config import settings
 
 
 def load_user_context(state: AgentState) -> AgentState:
-    """
-    Node 1: Load user context from database.
-    NEVER trust client-provided role.
-    
-    Args:
-        state: Current agent state
-        
-    Returns:
-        Updated state with user context from DB
-    """
     user_id = state["user_id"]
     
     with get_db_context() as db:
@@ -52,16 +39,6 @@ def load_user_context(state: AgentState) -> AgentState:
 
 
 def guardrail_pre(state: AgentState) -> AgentState:
-    """
-    Node 2: Pre-execution guardrail.
-    Detects and blocks obvious unauthorized requests.
-    
-    Args:
-        state: Current agent state
-        
-    Returns:
-        Updated state with block status if needed
-    """
     if state.get("blocked"):
         return state
     
@@ -80,15 +57,6 @@ def guardrail_pre(state: AgentState) -> AgentState:
 
 
 def parse_intent_and_entities(state: AgentState) -> AgentState:
-    """
-    Node 3: Parse user message to extract intent and entities.
-    
-    Args:
-        state: Current agent state
-        
-    Returns:
-        Updated state with intent and entities
-    """
     if state.get("blocked"):
         return state
     
@@ -111,15 +79,6 @@ def parse_intent_and_entities(state: AgentState) -> AgentState:
 
 
 def check_missing_fields(state: AgentState) -> AgentState:
-    """
-    Node 3.5: Check if required fields are missing.
-    
-    Args:
-        state: Current agent state
-        
-    Returns:
-        Updated state with missing_fields list
-    """
     if state.get("blocked"):
         return state
     
@@ -136,13 +95,12 @@ def check_missing_fields(state: AgentState) -> AgentState:
     
     for field in required:
         if field not in entities or entities[field] is None:
-            # Check if we can resolve by name
             if field == "student_id" and "student_name" in entities:
-                continue  # Will resolve in execute_tools
+                continue
             if field == "disciplina_id" and "disciplina_name" in entities:
-                continue  # Will resolve in execute_tools
+                continue  
             if field == "turma_id" and "turma_name" in entities:
-                continue  # Will resolve in execute_tools
+                continue  
             missing.append(field)
     
     state["missing_fields"] = missing
@@ -152,19 +110,8 @@ def check_missing_fields(state: AgentState) -> AgentState:
 
 
 def resolve_names_to_ids(state: AgentState, db: Session) -> Dict[str, Any]:
-    """
-    Helper to resolve names to IDs.
-    
-    Args:
-        state: Current agent state
-        db: Database session
-        
-    Returns:
-        Updated entities with resolved IDs
-    """
     entities = state.get("entities", {}).copy()
     
-    # Resolve student name to ID (teacher only)
     if "student_name" in entities and "student_id" not in entities:
         if state["role"] == "teacher":
             student = find_student_by_name(
@@ -175,8 +122,6 @@ def resolve_names_to_ids(state: AgentState, db: Session) -> Dict[str, Any]:
             if student:
                 entities["student_id"] = student["id"]
             else:
-                # The LLM may have misidentified a disciplina name as a student name
-                # e.g. "notas de fisica" → student_name: "fisica" instead of disciplina_name
                 if "disciplina_id" not in entities and "disciplina_name" not in entities:
                     disciplina = (
                         db.query(Disciplina)
@@ -187,7 +132,6 @@ def resolve_names_to_ids(state: AgentState, db: Session) -> Dict[str, Any]:
                         entities["disciplina_id"] = disciplina.id
                         del entities["student_name"]
     
-    # Resolve disciplina name to ID
     if "disciplina_name" in entities and "disciplina_id" not in entities:
         disciplina = (
             db.query(Disciplina)
@@ -197,7 +141,6 @@ def resolve_names_to_ids(state: AgentState, db: Session) -> Dict[str, Any]:
         if disciplina:
             entities["disciplina_id"] = disciplina.id
     
-    # Resolve turma name to ID
     if "turma_name" in entities and "turma_id" not in entities:
         turma = (
             db.query(Turma)
@@ -211,27 +154,16 @@ def resolve_names_to_ids(state: AgentState, db: Session) -> Dict[str, Any]:
 
 
 def execute_tools(state: AgentState) -> AgentState:
-    """
-    Node 5: Execute the appropriate tool based on intent.
-    
-    Args:
-        state: Current agent state
-        
-    Returns:
-        Updated state with tool result
-    """
     if state.get("blocked"):
         return state
     
     if state.get("ask_missing_fields"):
-        # Don't execute if fields are missing
         return state
     
     intent = state.get("intent", Intent.FALLBACK)
     
     with get_db_context() as db:
         try:
-            # Resolve names to IDs
             entities = resolve_names_to_ids(state, db)
             
             if intent == Intent.ADD_GRADE:
@@ -321,16 +253,6 @@ def execute_tools(state: AgentState) -> AgentState:
 
 
 def guardrail_post(state: AgentState) -> AgentState:
-    """
-    Node 6: Post-execution guardrail.
-    Sanitizes response to prevent data leakage.
-    
-    Args:
-        state: Current agent state
-        
-    Returns:
-        Updated state with sanitized tool_result
-    """
     if state.get("blocked") or not state.get("tool_result"):
         return state
     
@@ -347,15 +269,6 @@ def guardrail_post(state: AgentState) -> AgentState:
 
 
 def final_response(state: AgentState) -> AgentState:
-    """
-    Node 7: Generate final response.
-    
-    Args:
-        state: Current agent state
-        
-    Returns:
-        Updated state with response
-    """
     if state.get("blocked"):
         state["response"] = state.get("blocked_reason", "Pedido bloqueado.")
         return state
@@ -400,7 +313,6 @@ def final_response(state: AgentState) -> AgentState:
 
 
 def _format_result(intent: Intent, result: Dict[str, Any], state: AgentState = None) -> str:
-    """Format result for display."""
     if intent == Intent.ADD_GRADE:
         if result.get("success"):
             eval_data = result.get("evaluation", {})
@@ -423,7 +335,6 @@ def _format_result(intent: Intent, result: Dict[str, Any], state: AgentState = N
         if not grades:
             return "Nenhuma nota encontrada."
         response = f"Notas de {student.get('name')}:\n"
-        # Decide truncation: per-request `show_all` overrides settings
         show_all = (state or {}).get("show_all", False) or (not settings.grades_truncate_default)
         if show_all:
             for g in grades:

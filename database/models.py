@@ -1,7 +1,3 @@
-"""
-Database models for the School Grades system.
-Defines all SQLAlchemy models according to the data model specification.
-"""
 from datetime import datetime
 from enum import Enum as PyEnum
 from sqlalchemy import (
@@ -21,14 +17,6 @@ class UserRole(str, PyEnum):
 
 
 class User(Base):
-    """
-    Users table - stores students and teachers.
-    
-    Attributes:
-        id: Unique identifier
-        name: User's full name
-        role: Either 'student' or 'teacher'
-    """
     __tablename__ = "users"
     
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -45,13 +33,6 @@ class User(Base):
 
 
 class Disciplina(Base):
-    """
-    Disciplinas (subjects/courses) table.
-    
-    Attributes:
-        id: Unique identifier
-        name: Subject name (e.g., "Mathematics", "Portuguese")
-    """
     __tablename__ = "disciplinas"
     
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -65,13 +46,6 @@ class Disciplina(Base):
 
 
 class Turma(Base):
-    """
-    Turmas (classes/groups) table.
-    
-    Attributes:
-        id: Unique identifier
-        name: Class name (e.g., "10A", "11B")
-    """
     __tablename__ = "turmas"
     
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -86,14 +60,6 @@ class Turma(Base):
 
 
 class AlunoTurma(Base):
-    """
-    Association table linking students to their classes.
-    Supports students being in multiple classes.
-    
-    Attributes:
-        user_id: Foreign key to users table
-        turma_id: Foreign key to turmas table
-    """
     __tablename__ = "alunos_turmas"
     
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
@@ -108,22 +74,6 @@ class AlunoTurma(Base):
 
 
 class Avaliacao(Base):
-    """
-    Avaliacoes (evaluations/grades) table.
-    Stores all grades with full audit trail.
-    
-    Attributes:
-        id: Unique identifier
-        user_id: Student who received the grade
-        disciplina_id: Subject of the evaluation
-        turma_id: Class context for the evaluation
-        modulo: Module identifier (e.g., "Módulo 3", "Capítulo 2")
-        descricao: Description (e.g., "Teste 1", "Projeto", "Ficha A")
-        valor: Grade value (float, typically 0-20 or 0-100)
-        date: Date of the evaluation
-        updated_by: Teacher who last updated this grade
-        updated_at: Timestamp of last update
-    """
     __tablename__ = "avaliacoes"
     
     id = Column(Integer, primary_key=True, autoincrement=True)

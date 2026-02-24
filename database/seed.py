@@ -1,7 +1,3 @@
-"""
-Seed data script for the School Grades system.
-Creates sample data for testing and demonstration.
-"""
 from datetime import datetime, timedelta
 import random
 from database import (
@@ -11,7 +7,6 @@ from database import (
 
 
 def seed_database():
-    """Populate database with sample data."""
     
     with get_db_context() as db:
         # Clear existing data
@@ -61,8 +56,6 @@ def seed_database():
         db.add_all(turmas)
         db.flush()
         
-        # Assign students to classes
-        # First 3 students in 10A, next 2 in 10B, last one in 11A
         alunos_turmas = [
             AlunoTurma(user_id=students[0].id, turma_id=turmas[0].id),  # Miguel -> 10A
             AlunoTurma(user_id=students[1].id, turma_id=turmas[0].id),  # Ana -> 10A
@@ -82,13 +75,11 @@ def seed_database():
         base_date = datetime.now() - timedelta(days=90)
         
         for student in students:
-            # Get student's turma
             aluno_turma = db.query(AlunoTurma).filter_by(user_id=student.id).first()
             if aluno_turma:
-                # Create grades for each disciplina
-                for disciplina in disciplinas[:3]:  # First 3 subjects
-                    for i, modulo in enumerate(modulos[:2]):  # First 2 modules
-                        for j, descricao in enumerate(descricoes[:2]):  # 2 evaluations per module
+                for disciplina in disciplinas[:3]:
+                    for i, modulo in enumerate(modulos[:2]):
+                        for j, descricao in enumerate(descricoes[:2]):
                             avaliacao = Avaliacao(
                                 user_id=student.id,
                                 disciplina_id=disciplina.id,
@@ -112,7 +103,6 @@ def seed_database():
         print(f"  - {len(turmas)} classes")
         print(f"  - {len(avaliacoes)} evaluations")
         
-        # Print some IDs for reference
         print("\nReference IDs:")
         print(f"  Teachers: {[(t.id, t.name) for t in teachers]}")
         print(f"  Students: {[(s.id, s.name) for s in students]}")

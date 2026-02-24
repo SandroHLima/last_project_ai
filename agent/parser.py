@@ -92,21 +92,6 @@ Responda APENAS em formato JSON válido, sem explicações:
         role: str, 
         user_name: str
     ) -> Tuple[Intent, Dict[str, Any]]:
-        """
-        Parse a message to extract intent and entities.
-        
-        Args:
-            message: The user's message
-            user_id: The user's ID
-            role: The user's role
-            user_name: The user's name
-            
-        Returns:
-            Tuple of (intent, entities dict)
-        """
-        # Quick heuristic: if the message is short and clearly a simple query
-        # (e.g. "minhas notas", "mostra as minhas notas"), skip the LLM
-        # to reduce latency and use the faster rule-based parser.
         lower = message.lower().strip()
         simple_triggers = ["minhas notas", "minha nota", "mostra as", "mostra", "ver as", "ver minhas", "minhas", "minha"]
         if len(message) < 120 and any(t in lower for t in simple_triggers):
@@ -119,26 +104,22 @@ Responda APENAS em formato JSON válido, sem explicações:
                 "role": role,
                 "user_name": user_name
             })
-            # Strip <think> blocks that qwen3 may prepend
             clean = self._strip_think_tags(raw)
             result = json.loads(clean)
             
             intent_str = result.get("intent", "fallback")
             entities = result.get("entities", {})
             
-            # Convert intent string to enum
             try:
                 intent = Intent(intent_str)
             except ValueError:
                 intent = Intent.FALLBACK
             
-            # Clean up entities - convert string numbers to int/float
             cleaned_entities = self._clean_entities(entities)
             
             return intent, cleaned_entities
             
         except Exception as e:
-            # Fallback to rule-based parsing if LLM fails
             return self._rule_based_parse(message, user_id, role)
     
     def _clean_entities(self, entities: Dict[str, Any]) -> Dict[str, Any]:
@@ -156,7 +137,7 @@ Responda APENAS em formato JSON válido, sem explicações:
                 try:
                     cleaned[key] = int(value)
                 except (ValueError, TypeError):
-                    cleaned[key] = value  # Keep as string for name lookup
+                    cleaned[key] = value
             elif key in float_fields:
                 try:
                     cleaned[key] = float(value)
@@ -173,17 +154,6 @@ Responda APENAS em formato JSON válido, sem explicações:
         user_id: int, 
         role: str
     ) -> Tuple[Intent, Dict[str, Any]]:
-        """
-        Fallback rule-based parsing when LLM fails.
-        
-        Args:
-            message: The user's message
-            user_id: The user's ID
-            role: The user's role
-            
-        Returns:
-            Tuple of (intent, entities)
-        """
         msg = message
         msg_lower = msg.lower()
         entities: Dict[str, Any] = {}
@@ -204,9 +174,6 @@ Responda APENAS em formato JSON válido, sem explicações:
         else:
             intent = Intent.FALLBACK
 
-        # --- Extract entities ---
-
-        # Note value (0-20)
         valor_match = re.search(r'\b(\d{1,2}(?:[.,]\d+)?)\s*(?:valores?|pontos?)?\b', msg)
         if valor_match:
             try:
@@ -214,33 +181,27 @@ Responda APENAS em formato JSON válido, sem explicações:
             except ValueError:
                 pass
 
-        # Module
         modulo_match = re.search(r'(?:módulo|modulo|capítulo|module)\s*(\d+|[IVX]+)', msg_lower)
         if modulo_match:
             entities["modulo"] = f"Módulo {modulo_match.group(1)}"
 
-        # Turma
         turma_match = re.search(r'turma\s+(\d+[A-Za-z]?)', msg_lower)
         if turma_match:
             entities["turma_name"] = turma_match.group(1).upper()
 
-        # Student name — "aluno/a <Name>"
         student_match = re.search(r'(?:aluno|aluna|estudante)\s+([A-ZÀ-Ú][a-zà-ú]+(?:\s+[A-ZÀ-Ú][a-zà-ú]+)*)', msg)
         if student_match:
             entities["student_name"] = student_match.group(1)
 
-        # Disciplina name — "em <Name>" / "disciplina <Name>" / "de <Name>"
         disc_match = re.search(
             r'(?:disciplina|em|de)\s+([A-ZÀ-Ú][a-zà-ú]+(?:\s+[A-ZÀ-Ú][a-zà-ú]+)*)',
             msg
         )
         if disc_match:
             candidate = disc_match.group(1)
-            # Avoid capturing the student name as disciplina if already matched
             if "student_name" not in entities or candidate.lower() != entities["student_name"].lower():
                 entities["disciplina_name"] = candidate
 
-        # Descrição — "teste X" / "projeto" / "exame" / "trabalho"
         desc_match = re.search(
             r'(teste\s*\w*|exame\s*\w*|projeto\s*\w*|trabalho\s*\w*|prova\s*\w*)',
             msg_lower
@@ -248,19 +209,15 @@ Responda APENAS em formato JSON válido, sem explicações:
         if desc_match:
             entities["descricao"] = desc_match.group(1).strip().title()
 
-        # If student asking for their own grades
         if role == "student" and intent in [Intent.QUERY_GRADES, Intent.SUMMARY]:
             entities["student_id"] = user_id
 
         return intent, entities
 
-
-# Singleton instance
 _parser_instance = None
 
 
 def get_parser() -> IntentEntityParser:
-    """Get or create parser instance."""
     global _parser_instance
     if _parser_instance is None:
         _parser_instance = IntentEntityParser()

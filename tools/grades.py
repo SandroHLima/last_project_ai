@@ -1,12 +1,3 @@
-"""
-Grade tools for the School Grades system.
-Implements read and write operations with proper authorization enforcement.
-
-CRITICAL RULES:
-- Students can only see their own grades.
-- Only teachers can add or update grades.
-- NO DELETE OPERATIONS EXIST BY DESIGN.
-"""
 from datetime import datetime
 from typing import Dict, Any, Optional
 from sqlalchemy.orm import Session
@@ -32,7 +23,6 @@ def add_grade(
     valor: float,
     date: Optional[datetime] = None,
 ) -> Dict[str, Any]:
-    """Add a new grade. **Teacher only.**"""
     auth = AuthorizationService(db)
     auth.enforce_teacher_only(teacher_id, "add_grade")
 
@@ -79,7 +69,6 @@ def update_grade(
     descricao: Optional[str] = None,
     date: Optional[datetime] = None,
 ) -> Dict[str, Any]:
-    """Update an existing grade. **Teacher only.**"""
     auth = AuthorizationService(db)
     auth.enforce_teacher_only(teacher_id, "update_grade")
 
@@ -110,7 +99,6 @@ def update_grade(
 
 
 def delete_grade(*args, **kwargs):
-    """DELETE IS NOT ALLOWED. Always raises FeatureNotAvailableError."""
     raise FeatureNotAvailableError(
         "delete_grade - Deleting grades is not allowed. "
         "Use update_grade to modify existing grades instead."
@@ -129,7 +117,6 @@ def get_grades_by_student(
     modulo: Optional[str] = None,
     turma_id: Optional[int] = None,
 ) -> Dict[str, Any]:
-    """Get grades for a student. Students can only see their own."""
     auth = AuthorizationService(db)
     auth.enforce_student_data_access(requester_id, student_id)
 
@@ -162,7 +149,6 @@ def get_grades_by_disciplina(
     turma_id: Optional[int] = None,
     modulo: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Get grades for a disciplina. Students only see their own within it."""
     auth = AuthorizationService(db)
     role = auth.get_user_role(requester_id)
 
@@ -195,7 +181,6 @@ def get_grade_summary(
     student_id: int,
     disciplina_id: Optional[int] = None,
 ) -> Dict[str, Any]:
-    """Get grade summary with averages. Students can only see their own."""
     auth = AuthorizationService(db)
     auth.enforce_student_data_access(requester_id, student_id)
 
@@ -257,7 +242,6 @@ def get_my_grades(
     disciplina_id: Optional[int] = None,
     modulo: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Convenience: get the requesting student's own grades."""
     return get_grades_by_student(db=db, requester_id=user_id,
                                  student_id=user_id,
                                  disciplina_id=disciplina_id, modulo=modulo)
@@ -268,7 +252,6 @@ def get_my_summary(
     user_id: int,
     disciplina_id: Optional[int] = None,
 ) -> Dict[str, Any]:
-    """Convenience: get the requesting student's own summary."""
     return get_grade_summary(db=db, requester_id=user_id,
                              student_id=user_id,
                              disciplina_id=disciplina_id)

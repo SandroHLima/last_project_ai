@@ -1,6 +1,3 @@
-"""
-API routes for the School Grades system.
-"""
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
@@ -41,14 +38,10 @@ from .schemas import (
     ErrorResponse,
 )
 
-
-# Router for agent endpoints
 agent_router = APIRouter(prefix="/agent", tags=["Agent"])
 
-# Router for direct tool access
 tools_router = APIRouter(prefix="/tools", tags=["Tools"])
 
-# Router for user endpoints
 users_router = APIRouter(prefix="/users", tags=["Users"])
 
 
@@ -79,7 +72,6 @@ async def agent_chat(request: AgentRequest, db: Session = Depends(get_db)):
 
 @users_router.post("/", response_model=UserResponse)
 async def create_user_endpoint(request: CreateUserRequest, db: Session = Depends(get_db)):
-    """Create a new user (student or teacher)."""
     try:
         user = create_user(db=db, name=request.name, role=request.role, turma_ids=request.turma_ids)
         return UserResponse(**user)
@@ -91,7 +83,6 @@ async def create_user_endpoint(request: CreateUserRequest, db: Session = Depends
 
 @users_router.get("/", response_model=list[UserResponse])
 async def get_users_endpoint(role: str | None = None, db: Session = Depends(get_db)):
-    """List users. Optional query param `role` filters by 'student' or 'teacher'."""
     try:
         users = list_users(db=db, role=role)
         return [UserResponse(**u) for u in users]
@@ -102,7 +93,6 @@ async def get_users_endpoint(role: str | None = None, db: Session = Depends(get_
 
 @tools_router.get("/turmas", response_model=list[TurmaResponse])
 async def get_turmas_endpoint(db: Session = Depends(get_db)):
-    """Return list of turmas (classes)."""
     try:
         turmas = list_turmas(db=db)
         return [TurmaResponse(**t) for t in turmas]
@@ -114,7 +104,6 @@ async def get_turmas_endpoint(db: Session = Depends(get_db)):
 
 @users_router.get("/{user_id}", response_model=UserResponse)
 async def get_user_info(user_id: int, db: Session = Depends(get_db)):
-    """Get user information."""
     try:
         user = get_user(db, user_id)
         return UserResponse(**user)
@@ -124,7 +113,6 @@ async def get_user_info(user_id: int, db: Session = Depends(get_db)):
 
 @users_router.get("/{user_id}/details")
 async def get_user_details(user_id: int, db: Session = Depends(get_db)):
-    """Get user information with additional details (classes for students)."""
     try:
         return get_user_with_classes(db, user_id)
     except InvalidUserError:
@@ -135,11 +123,6 @@ async def get_user_details(user_id: int, db: Session = Depends(get_db)):
 
 @tools_router.post("/grades/add", response_model=SuccessResponse)
 async def add_grade_direct(request: AddGradeRequest, db: Session = Depends(get_db)):
-    """
-    Add a new grade (Teacher only).
-    
-    Direct tool access - bypasses natural language processing.
-    """
     try:
         result = add_grade(
             db=db,
@@ -170,9 +153,6 @@ async def add_grade_direct(request: AddGradeRequest, db: Session = Depends(get_d
 
 @tools_router.post("/grades/update", response_model=SuccessResponse)
 async def update_grade_direct(request: UpdateGradeRequest, db: Session = Depends(get_db)):
-    """
-    Update an existing grade (Teacher only).
-    """
     try:
         result = update_grade(
             db=db,
@@ -198,14 +178,7 @@ async def update_grade_direct(request: UpdateGradeRequest, db: Session = Depends
 
 @tools_router.post("/grades/query", response_model=GradesListResponse)
 async def query_grades(request: GradesQueryRequest, db: Session = Depends(get_db)):
-    """
-    Query grades with filters.
-    
-    Students can only query their own grades.
-    Teachers can query any student's grades.
-    """
     try:
-        # If student_id not specified, default to requester's own grades
         student_id = request.student_id or request.requester_id
         
         result = get_grades_by_student(
@@ -233,12 +206,6 @@ async def get_summary(
     disciplina_id: int = None,
     db: Session = Depends(get_db)
 ):
-    """
-    Get grade summary for a student.
-    
-    Students can only get their own summary.
-    Teachers can get any student's summary.
-    """
     try:
         return get_grade_summary(
             db=db,
@@ -260,11 +227,6 @@ async def get_class_report_endpoint(
     request: ClassReportRequest,
     db: Session = Depends(get_db)
 ):
-    """
-    Get class report (Teacher only).
-    
-    Returns all students in the class with their averages.
-    """
     try:
         result = get_class_report(
             db=db,
@@ -285,11 +247,6 @@ async def get_class_report_endpoint(
 
 @tools_router.delete("/grades/{grade_id}")
 async def delete_grade_endpoint(grade_id: int, teacher_id: int):
-    """
-    Delete a grade - NOT AVAILABLE.
-    
-    This endpoint always returns 405 as deletion is not allowed.
-    """
     raise HTTPException(
         status_code=405,
         detail="Deleting grades is not allowed. Use update to modify grades."

@@ -1,7 +1,3 @@
-"""
-Reporting tools for the School Grades system.
-All reporting functions are restricted to teachers only.
-"""
 from typing import Dict, Any, Optional, List
 from statistics import mean, median
 from sqlalchemy.orm import Session
@@ -19,24 +15,6 @@ def get_class_report(
     disciplina_id: Optional[int] = None,
     modulo: Optional[str] = None
 ) -> Dict[str, Any]:
-    """
-    Get a comprehensive report for a class.
-    
-    AUTHORIZATION: Teacher only.
-    
-    Args:
-        db: Database session
-        requester_id: ID of the requesting teacher
-        turma_id: ID of the class
-        disciplina_id: Filter by subject (optional)
-        modulo: Filter by module (optional)
-        
-    Returns:
-        Dictionary with class report including all students and their averages
-        
-    Raises:
-        TeacherOnlyError: If requester is not a teacher
-    """
     auth_service = AuthorizationService(db)
     
     # ENFORCEMENT: Only teachers can view class reports
@@ -108,15 +86,6 @@ def get_class_report(
 
 
 def compute_statistics(grades: List[float]) -> Dict[str, Any]:
-    """
-    Compute statistics for a list of grades.
-    
-    Args:
-        grades: List of grade values
-        
-    Returns:
-        Dictionary with mean, median, min, max, total
-    """
     if not grades:
         return {
             "mean": None,
@@ -141,20 +110,6 @@ def get_disciplina_report(
     disciplina_id: int,
     turma_id: Optional[int] = None
 ) -> Dict[str, Any]:
-    """
-    Get a report for a specific disciplina.
-    
-    AUTHORIZATION: Teacher only.
-    
-    Args:
-        db: Database session
-        requester_id: ID of the requesting teacher
-        disciplina_id: ID of the subject
-        turma_id: Filter by class (optional)
-        
-    Returns:
-        Dictionary with disciplina report
-    """
     auth_service = AuthorizationService(db)
     auth_service.enforce_teacher_only(requester_id, "view_disciplina_report")
     
@@ -219,21 +174,6 @@ def get_module_report(
     disciplina_id: Optional[int] = None,
     turma_id: Optional[int] = None
 ) -> Dict[str, Any]:
-    """
-    Get a report for a specific module.
-    
-    AUTHORIZATION: Teacher only.
-    
-    Args:
-        db: Database session
-        requester_id: ID of the requesting teacher
-        modulo: Module name
-        disciplina_id: Filter by subject (optional)
-        turma_id: Filter by class (optional)
-        
-    Returns:
-        Dictionary with module report
-    """
     auth_service = AuthorizationService(db)
     auth_service.enforce_teacher_only(requester_id, "view_module_report")
     

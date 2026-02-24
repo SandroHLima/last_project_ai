@@ -1,10 +1,4 @@
-"""
-Custom exceptions for the School Grades system.
-"""
-
-
 class AuthorizationError(Exception):
-    """Raised when a user attempts an unauthorized action."""
     
     def __init__(self, message: str, user_id: int = None, action: str = None):
         self.message = message
@@ -14,7 +8,6 @@ class AuthorizationError(Exception):
 
 
 class StudentAccessDenied(AuthorizationError):
-    """Raised when a student tries to access another student's data."""
     
     def __init__(self, requester_id: int, target_id: int):
         message = f"Access denied: Student {requester_id} cannot access data of student {target_id}"
@@ -22,7 +15,6 @@ class StudentAccessDenied(AuthorizationError):
 
 
 class TeacherOnlyError(AuthorizationError):
-    """Raised when a non-teacher tries to perform a teacher-only action."""
     
     def __init__(self, user_id: int, action: str):
         message = f"Access denied: Only teachers can perform '{action}'"
@@ -30,7 +22,6 @@ class TeacherOnlyError(AuthorizationError):
 
 
 class InvalidUserError(Exception):
-    """Raised when a user is not found."""
     
     def __init__(self, user_id: int):
         self.user_id = user_id
@@ -38,7 +29,6 @@ class InvalidUserError(Exception):
 
 
 class ValidationError(Exception):
-    """Raised when input validation fails."""
     
     def __init__(self, message: str, field: str = None):
         self.message = message
@@ -47,7 +37,6 @@ class ValidationError(Exception):
 
 
 class FeatureNotAvailableError(Exception):
-    """Raised when attempting to use a feature that doesn't exist."""
     
     def __init__(self, feature: str):
         self.feature = feature

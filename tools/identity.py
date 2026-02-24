@@ -1,7 +1,3 @@
-"""
-Identity tools for the School Grades system.
-Handles user identification and role retrieval.
-"""
 from typing import Dict, Any, Optional
 from sqlalchemy.orm import Session
 
@@ -10,19 +6,6 @@ from .authorization import AuthorizationService
 
 
 def get_user(db: Session, user_id: int) -> Dict[str, Any]:
-    """
-    Get user information from database.
-    
-    Args:
-        db: Database session
-        user_id: The user ID to look up
-        
-    Returns:
-        Dictionary with user id, name, and role
-        
-    Raises:
-        InvalidUserError: If user not found
-    """
     auth_service = AuthorizationService(db)
     user = auth_service.get_user(user_id)
     
@@ -34,16 +17,6 @@ def get_user(db: Session, user_id: int) -> Dict[str, Any]:
 
 
 def get_user_with_classes(db: Session, user_id: int) -> Dict[str, Any]:
-    """
-    Get user information with their classes.
-    
-    Args:
-        db: Database session
-        user_id: The user ID to look up
-        
-    Returns:
-        Dictionary with user info and their classes (for students)
-    """
     user_info = get_user(db, user_id)
     
     # Get classes if student
@@ -67,20 +40,6 @@ def get_students_in_class(
     requester_id: int, 
     turma_id: int
 ) -> list[Dict[str, Any]]:
-    """
-    Get all students in a class (teacher only).
-    
-    Args:
-        db: Database session
-        requester_id: The requesting user's ID
-        turma_id: The class ID
-        
-    Returns:
-        List of students in the class
-        
-    Raises:
-        TeacherOnlyError: If requester is not a teacher
-    """
     auth_service = AuthorizationService(db)
     auth_service.enforce_teacher_only(requester_id, "view_students_in_class")
     
@@ -103,21 +62,6 @@ def find_student_by_name(
     requester_id: int,
     name: str
 ) -> Optional[Dict[str, Any]]:
-    """
-    Find a student by name (partial match).
-    Teachers only - students cannot search for other students.
-    
-    Args:
-        db: Database session
-        requester_id: The requesting user's ID
-        name: Name to search for
-        
-    Returns:
-        Student info if found, None otherwise
-        
-    Raises:
-        TeacherOnlyError: If requester is not a teacher
-    """
     auth_service = AuthorizationService(db)
     auth_service.enforce_teacher_only(requester_id, "search_students")
     
@@ -138,16 +82,6 @@ def find_student_by_name(
 
 
 def list_users(db: Session, role: Optional[str] = None) -> list[Dict[str, Any]]:
-    """
-    List users, optionally filtered by role ('student' or 'teacher').
-
-    Args:
-        db: Database session
-        role: Optional role filter
-
-    Returns:
-        List of user dicts
-    """
     query = db.query(User)
     if role:
         query = query.filter(User.role == role)
@@ -156,29 +90,11 @@ def list_users(db: Session, role: Optional[str] = None) -> list[Dict[str, Any]]:
 
 
 def list_turmas(db: Session) -> list[Dict[str, Any]]:
-    """
-    Return list of all `Turma` records.
-    """
     turmas = db.query(Turma).all()
     return [{"id": t.id, "name": t.name} for t in turmas]
 
 
 def create_user(db: Session, name: str, role: str, turma_ids: Optional[list[int]] = None) -> Dict[str, Any]:
-    """
-    Create a new user (student or teacher) and optionally assign to classes.
-
-    Args:
-        db: Database session
-        name: User full name
-        role: 'student' or 'teacher'
-        turma_ids: Optional list of turma IDs to assign (students only)
-
-    Returns:
-        Dict with created user info
-
-    Raises:
-        ValidationError: if role invalid or turma doesn't exist
-    """
     from .exceptions import ValidationError
     # Basic validation
     if role not in ("student", "teacher"):

@@ -1,6 +1,3 @@
-"""
-Pydantic schemas for API requests and responses.
-"""
 from datetime import datetime
 from typing import Optional, List, Any
 from pydantic import BaseModel, Field
@@ -8,14 +5,12 @@ from pydantic import BaseModel, Field
 
 # Request schemas
 class AgentRequest(BaseModel):
-    """Request to the agent endpoint."""
     user_id: int = Field(..., description="ID of the requesting user")
     message: str = Field(..., description="User's message/query", min_length=1)
     show_all: Optional[bool] = Field(False, description="Whether to request full results (no truncation)")
 
 
 class AddGradeRequest(BaseModel):
-    """Request to add a grade directly (bypassing agent)."""
     teacher_id: int = Field(..., description="ID of the teacher adding the grade")
     student_id: int = Field(..., description="ID of the student")
     disciplina_id: int = Field(..., description="ID of the subject")
@@ -27,7 +22,6 @@ class AddGradeRequest(BaseModel):
 
 
 class UpdateGradeRequest(BaseModel):
-    """Request to update a grade."""
     teacher_id: int = Field(..., description="ID of the teacher")
     grade_id: int = Field(..., description="ID of the grade to update")
     valor: Optional[float] = Field(None, ge=0, le=20, description="New grade value")
@@ -36,7 +30,6 @@ class UpdateGradeRequest(BaseModel):
 
 
 class GradesQueryRequest(BaseModel):
-    """Request to query grades."""
     requester_id: int = Field(..., description="ID of the requesting user")
     student_id: Optional[int] = Field(None, description="Filter by student ID")
     disciplina_id: Optional[int] = Field(None, description="Filter by subject ID")
@@ -45,7 +38,6 @@ class GradesQueryRequest(BaseModel):
 
 
 class ClassReportRequest(BaseModel):
-    """Request for class report."""
     requester_id: int = Field(..., description="ID of the requesting teacher")
     turma_id: int = Field(..., description="Class ID")
     disciplina_id: Optional[int] = Field(None, description="Filter by subject")
@@ -53,7 +45,6 @@ class ClassReportRequest(BaseModel):
 
 
 class CreateUserRequest(BaseModel):
-    """Request to create a user (student or teacher)."""
     name: str = Field(..., description="Full name of the user", min_length=1)
     role: str = Field(..., description="Role: 'student' or 'teacher'")
     turma_ids: Optional[List[int]] = Field(None, description="Optional list of turma IDs to assign (students only)")
@@ -61,7 +52,6 @@ class CreateUserRequest(BaseModel):
 
 # Response schemas
 class AgentResponse(BaseModel):
-    """Response from the agent."""
     response: str = Field(..., description="Agent's response text")
     blocked: bool = Field(default=False, description="Whether request was blocked")
     intent: str = Field(..., description="Detected intent")
@@ -70,20 +60,17 @@ class AgentResponse(BaseModel):
 
 
 class UserResponse(BaseModel):
-    """User information response."""
     id: int
     name: str
     role: str
 
 
 class TurmaResponse(BaseModel):
-    """Turma (class) response."""
     id: int
     name: str
 
 
 class GradeResponse(BaseModel):
-    """Single grade response."""
     id: int
     user_id: int
     student_name: Optional[str]
@@ -100,7 +87,6 @@ class GradeResponse(BaseModel):
 
 
 class GradesListResponse(BaseModel):
-    """List of grades response."""
     student: Optional[dict]
     filters_applied: dict
     total_grades: int
@@ -108,7 +94,6 @@ class GradesListResponse(BaseModel):
 
 
 class SummaryResponse(BaseModel):
-    """Grade summary response."""
     student: dict
     disciplina_id: Optional[int]
     total_evaluations: int
@@ -120,7 +105,6 @@ class SummaryResponse(BaseModel):
 
 
 class ClassReportResponse(BaseModel):
-    """Class report response."""
     turma: dict
     filters_applied: dict
     total_students: int
@@ -129,13 +113,11 @@ class ClassReportResponse(BaseModel):
 
 
 class ErrorResponse(BaseModel):
-    """Error response."""
     detail: str
     error_type: Optional[str]
 
 
 class SuccessResponse(BaseModel):
-    """Generic success response."""
     success: bool
     message: str
     data: Optional[Any]

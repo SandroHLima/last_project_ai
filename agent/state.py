@@ -1,6 +1,3 @@
-"""
-Agent state definition for the School Grades LangGraph agent.
-"""
 from typing import TypedDict, Optional, Any, List
 from enum import Enum
 
@@ -14,26 +11,10 @@ class Intent(str, Enum):
     SUMMARY = "summary"
     CLASS_REPORT = "class_report"
     FALLBACK = "fallback"
-    BLOCKED = "blocked"  # Used when guardrail blocks the request
+    BLOCKED = "blocked"
 
 
 class AgentState(TypedDict, total=False):
-    """
-    State maintained throughout the agent workflow.
-    
-    Attributes:
-        user_id: The ID of the requesting user
-        role: The user's role (from database, never from client)
-        message: The original user message
-        intent: Detected intent
-        entities: Extracted entities from the message
-        missing_fields: Fields that are required but not provided
-        tool_result: Result from tool execution
-        error: Error message if something failed
-        response: Final response to return to user
-        blocked: Whether the request was blocked by guardrail
-        blocked_reason: Reason for blocking
-    """
     # User context (loaded from DB)
     user_id: int
     role: str
@@ -63,16 +44,6 @@ class AgentState(TypedDict, total=False):
 
 
 class Entities(TypedDict, total=False):
-    """
-    Entities extracted from user message.
-    
-    Used for:
-    - ADD_GRADE: student_id, disciplina_id, turma_id, modulo, descricao, valor
-    - UPDATE_GRADE: grade_id, valor, modulo, descricao
-    - QUERY_GRADES: student_id, disciplina_id, modulo, turma_id
-    - SUMMARY: student_id, disciplina_id
-    - CLASS_REPORT: turma_id, disciplina_id, modulo
-    """
     # Student identification
     student_id: Optional[int]
     student_name: Optional[str]  # For name-based lookup
