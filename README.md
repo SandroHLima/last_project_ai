@@ -82,9 +82,17 @@ Construir um agente de avaliações escolares acessível via API, onde:
 
 ```bash
 # 1. Criar ambiente virtual
-python -m venv .venv
-.venv\Scripts\activate          # Windows
-# source .venv/bin/activate     # Linux/Mac
+# IMPORTANT: create the venv using a specific Python 3.11 interpreter
+# to avoid accidentally using an incompatible system Python (e.g. 3.13).
+# On Windows (recommended):
+py -3.11 -m venv .venv
+.venv\Scripts\Activate.ps1     # PowerShell
+# or, for cmd.exe:
+.venv\Scripts\activate.bat
+
+# On Linux / macOS (if python3.11 is available):
+python3.11 -m venv .venv
+source .venv/bin/activate
 
 # 2. Instalar dependências
 pip install -r requirements.txt
