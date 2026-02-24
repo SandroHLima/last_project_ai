@@ -72,10 +72,8 @@ API for managing school grades with an AI agent interface.
     lifespan=lifespan,
 )
 
-# Serve static assets (CSS/JS/images)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -85,7 +83,6 @@ app.add_middleware(
 )
 
 
-# Exception handler
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     """Global exception handler."""
@@ -95,7 +92,6 @@ async def global_exception_handler(request: Request, exc: Exception):
     )
 
 
-# Include routers
 app.include_router(agent_router)
 app.include_router(tools_router)
 app.include_router(users_router)

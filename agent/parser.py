@@ -104,9 +104,6 @@ Responda APENAS em formato JSON válido, sem explicações:
         Returns:
             Tuple of (intent, entities dict)
         """
-        # Quick heuristic: if the message is short and clearly a simple query
-        # (e.g. "minhas notas", "mostra as minhas notas"), skip the LLM
-        # to reduce latency and use the faster rule-based parser.
         lower = message.lower().strip()
         simple_triggers = ["minhas notas", "minha nota", "mostra as", "mostra", "ver as", "ver minhas", "minhas", "minha"]
         if len(message) < 120 and any(t in lower for t in simple_triggers):

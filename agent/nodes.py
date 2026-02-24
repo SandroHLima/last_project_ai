@@ -164,7 +164,6 @@ def resolve_names_to_ids(state: AgentState, db: Session) -> Dict[str, Any]:
     """
     entities = state.get("entities", {}).copy()
     
-    # Resolve student name to ID (teacher only)
     if "student_name" in entities and "student_id" not in entities:
         if state["role"] == "teacher":
             student = find_student_by_name(
@@ -175,8 +174,6 @@ def resolve_names_to_ids(state: AgentState, db: Session) -> Dict[str, Any]:
             if student:
                 entities["student_id"] = student["id"]
             else:
-                # The LLM may have misidentified a disciplina name as a student name
-                # e.g. "notas de fisica" → student_name: "fisica" instead of disciplina_name
                 if "disciplina_id" not in entities and "disciplina_name" not in entities:
                     disciplina = (
                         db.query(Disciplina)
@@ -187,7 +184,6 @@ def resolve_names_to_ids(state: AgentState, db: Session) -> Dict[str, Any]:
                         entities["disciplina_id"] = disciplina.id
                         del entities["student_name"]
     
-    # Resolve disciplina name to ID
     if "disciplina_name" in entities and "disciplina_id" not in entities:
         disciplina = (
             db.query(Disciplina)
@@ -197,7 +193,6 @@ def resolve_names_to_ids(state: AgentState, db: Session) -> Dict[str, Any]:
         if disciplina:
             entities["disciplina_id"] = disciplina.id
     
-    # Resolve turma name to ID
     if "turma_name" in entities and "turma_id" not in entities:
         turma = (
             db.query(Turma)
@@ -224,14 +219,12 @@ def execute_tools(state: AgentState) -> AgentState:
         return state
     
     if state.get("ask_missing_fields"):
-        # Don't execute if fields are missing
         return state
     
     intent = state.get("intent", Intent.FALLBACK)
     
     with get_db_context() as db:
         try:
-            # Resolve names to IDs
             entities = resolve_names_to_ids(state, db)
             
             if intent == Intent.ADD_GRADE:
